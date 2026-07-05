@@ -1,0 +1,23 @@
+{
+  "name": "物居 — 家用物品管理",
+  "short_name": "物居",
+  "description": "管理家中物品、容器空间与保质期提醒",
+  "start_url": "/wuju-pwa/",
+  "scope": "/wuju-pwa/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#5B8FF9",
+  "background_color": "#F5F5F7",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

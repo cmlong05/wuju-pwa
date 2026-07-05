@@ -1,0 +1,7 @@
+services:
+  wuju-pwa:
+    build: .
+    container_name: wuju-pwa
+    ports:
+      - "8080:80"
+    restart: unless-stopped

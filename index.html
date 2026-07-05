@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="物居">
+  <meta name="theme-color" content="#5B8FF9">
+  <link rel="manifest" href="/wuju-pwa/manifest.json">
+  <link rel="icon" href="/wuju-pwa/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/wuju-pwa/icons/icon-512.png">
+  <link rel="stylesheet" href="/wuju-pwa/css/style.css">
+  <title>物居</title>
+</head>
+<body>
+  <div id="app">
+    <div id="header">
+      <button class="back">‹ 返回</button>
+      <span class="title">物居</span>
+      <span class="action"></span>
+    </div>
+    <div id="content"></div>
+    <div id="tabs">
+      <button class="tab active" data-tab="items">
+        <span class="icon">📋</span>物品
+      </button>
+      <button class="tab" data-tab="spaces">
+        <span class="icon">🗂️</span>空间
+      </button>
+      <button class="tab" data-tab="alerts">
+        <span class="icon">🔔</span>提醒
+      </button>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/dexie@4.0.4/dist/dexie.js"></script>
+  <script src="/wuju-pwa/js/db.js"></script>
+  <script src="/wuju-pwa/js/app.js"></script>
+</body>
+</html>
