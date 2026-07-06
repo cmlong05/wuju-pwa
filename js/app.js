@@ -48,10 +48,13 @@ function h(tag, attrs = {}, ...children) {
     else if (k === 'disabled' || k === 'selected' || k === 'checked') { if (v) el.setAttribute(k, ''); }
     else el.setAttribute(k, v);
   }
-  for (const child of children) {
-    if (typeof child === 'string') el.appendChild(document.createTextNode(child));
-    else if (child instanceof Node) el.appendChild(child);
+  function append(c) {
+    if (c == null || c === false) return;
+    if (Array.isArray(c)) { c.forEach(append); return; }
+    if (typeof c === 'string') el.appendChild(document.createTextNode(c));
+    else if (c instanceof Node) el.appendChild(c);
   }
+  children.forEach(append);
   return el;
 }
 
@@ -124,9 +127,9 @@ async function render() {
     actionBtn.style.display = (state.tab === 'alerts') ? 'none' : 'block';
     actionBtn.innerHTML = '';
     if (state.tab === 'items') {
-      actionBtn.appendChild(h('span', { onclick: () => navigate('item-edit', {}) }, '+'));
+      actionBtn.appendChild(h('span', { className: 'add-btn', onclick: () => navigate('item-edit', {}) }, '+'));
     } else if (state.tab === 'spaces') {
-      actionBtn.appendChild(h('span', { onclick: () => navigate('container-edit', {}) }, '+'));
+      actionBtn.appendChild(h('span', { className: 'add-btn', onclick: () => navigate('container-edit', {}) }, '+'));
     }
     switch (state.tab) {
       case 'items': await renderItemList(content); break;
@@ -163,17 +166,31 @@ async function renderItemList(container) {
   const search = state.itemSearch;
   const category = state.itemCategory;
 
-  // Search bar
-  container.appendChild(
-    h('div', { className: 'search-bar' }, [
-      h('span', {}, '🔍'),
-      h('input', {
-        type: 'text', placeholder: '搜索物品...', value: search,
-        oninput: (e) => { state.itemSearch = e.target.value; render(); }
-      }),
-      search ? h('button', { className: 'clear-btn', onclick: () => { state.itemSearch = ''; render(); } }, '✕') : ''
-    ].filter(Boolean))
-  );
+  // Search bar — only create once, keep DOM reference
+  const existingSearch = container.querySelector('.search-bar');
+  if (!existingSearch) {
+    container.appendChild(
+      h('div', { className: 'search-bar' }, [
+        h('span', {}, '🔍'),
+        h('input', {
+          type: 'text', placeholder: '搜索物品...', value: search,
+          oninput: (e) => { state.itemSearch = e.target.value; refreshItemList(); }
+        }),
+        h('button', {
+          className: 'clear-btn',
+          style: search ? '' : 'display:none',
+          onclick: () => { state.itemSearch = ''; render(); }
+        }, '✕')
+      ])
+    );
+  } else {
+    // Update existing search bar without destroying it
+    const input = existingSearch.querySelector('input');
+    const clearBtn = existingSearch.querySelector('.clear-btn');
+    if (input && input !== document.activeElement) input.value = search;
+    if (clearBtn) clearBtn.style.display = search ? '' : 'none';
+  }
+  container.appendChild(h('div', { id: 'item-list-wrap' }));
 
   // Category chips
   const chipRow = h('div', { className: 'chip-scroll' });
@@ -199,13 +216,23 @@ async function renderItemList(container) {
   });
   container.appendChild(seg);
 
-  // Items
+  await renderItemRows();
+}
+
+async function renderItemRows() {
+  const wrap = document.getElementById('item-list-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+
+  const search = state.itemSearch;
+  const category = state.itemCategory;
+
   let items = await getItemsSorted(state.itemSort);
   if (category) items = items.filter(i => i.category === category);
   if (search) items = items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
 
   if (items.length === 0) {
-    container.appendChild(emptyView(search || category ? '🔍' : '📦', search || category ? '没有找到' : '还没有物品', search || category ? '试试其他关键词' : '点击右上角 + 添加第一个物品'));
+    wrap.appendChild(emptyView(search || category ? '🔍' : '📦', search || category ? '没有找到' : '还没有物品', search || category ? '试试其他关键词' : '点击右上角 + 添加第一个物品'));
     return;
   }
 
@@ -224,7 +251,6 @@ async function renderItemList(container) {
       ]),
       h('span', { className: 'chevron' }, '›')
     ]);
-    // Lazy load container path
     if (item.containerId) {
       getContainerPath(item.containerId).then(path => {
         const sub = row.querySelector('.sub');
@@ -233,7 +259,12 @@ async function renderItemList(container) {
     }
     list.appendChild(row);
   });
-  container.appendChild(list);
+  wrap.appendChild(list);
+}
+
+// Refresh items only — doesn't touch search bar or filters
+function refreshItemList() {
+  renderItemRows();
 }
 
 function emptyView(icon, title, desc) {
@@ -521,7 +552,7 @@ async function renderItemEdit(container, itemId) {
       await db.items.update(itemId, data);
     } else {
       await db.items.put({
-        id: crypto.randomUUID(),
+        id: uuid(),
         ...data,
         addedDate: Date.now()
       });
@@ -668,7 +699,7 @@ async function renderContainerEdit(container, containerId, presetParentId) {
     } else {
       const maxSort = await db.containers.where('parentId').equals(parentId).count();
       await db.containers.put({
-        id: crypto.randomUUID(), name, icon, color, sortOrder: maxSort,
+        id: uuid(), name, icon, color, sortOrder: maxSort,
         notes, parentId, createdAt: Date.now()
       });
     }
@@ -730,7 +761,7 @@ async function renderRelationEdit(container, itemId) {
         const targetId = $('#rel-target').value;
         if (!targetId) return;
         await db.relations.put({
-          id: crypto.randomUUID(),
+          id: uuid(),
           sourceId: itemId,
           targetId,
           relationType: $('#rel-type').value,
@@ -811,32 +842,48 @@ function showDeleteDialog(type, name, onConfirm) {
 
 // ── Initialize ──
 async function init() {
-  // Register service worker
-  if ('serviceWorker' in navigator) {
+  try {
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      try {
+        await navigator.serviceWorker.register('/wuju-pwa/sw.js');
+      } catch (e) { /* offline or no support */ }
+    }
+
+    // Seed sample data
     try {
-      await navigator.serviceWorker.register('/wuju-pwa/sw.js');
-    } catch (e) { /* offline or no support */ }
+      await seedSampleData();
+    } catch (e) {
+      console.error('seedSampleData failed:', e);
+      // Try to proceed anyway — data may already exist
+    }
+
+    // Tab click handlers
+    $$('#tabs .tab').forEach(tab => {
+      tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+    });
+
+    // Back button
+    $('#header .back').addEventListener('click', goBack);
+
+    // First render
+    await render();
+
+    // Clear loading status
+    var st = document.getElementById('load-status');
+    if (st) st.parentElement.style.display = 'none';
+  } catch (e) {
+    console.error('init failed:', e);
+    var content = document.getElementById('content');
+    if (content) {
+      content.innerHTML = '<div style="text-align:center;padding:40px 16px;color:var(--red)">' +
+        '<div style="font-size:48px;margin-bottom:12px">⚠️</div>' +
+        '<div style="font-weight:600;margin-bottom:8px">初始化失败</div>' +
+        '<div style="font-size:13px;color:var(--text-secondary)">' + (e.message || String(e)) + '</div>' +
+        '<div style="font-size:12px;color:var(--text-tertiary);margin-top:12px">请确认浏览器未开启无痕模式，并允许本站使用存储</div>' +
+        '</div>';
+    }
   }
-
-  // Seed sample data
-  await seedSampleData();
-
-  // Tab click handlers
-  $$('#tabs .tab').forEach(tab => {
-    tab.addEventListener('click', () => switchTab(tab.dataset.tab));
-  });
-
-  // Back button
-  $('#header .back').addEventListener('click', goBack);
-
-  // Item list + button
-  const addItemBtn = document.createElement('button');
-  addItemBtn.className = 'action';
-  addItemBtn.textContent = '+';
-  addItemBtn.style.display = 'none';
-
-  // First render
-  await render();
 }
 
 document.addEventListener('DOMContentLoaded', init);

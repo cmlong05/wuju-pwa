@@ -1,12 +1,12 @@
-const CACHE = 'wuju-v1';
+const CACHE = 'wuju-v2';
 const PRECACHE = [
   '/wuju-pwa/',
   '/wuju-pwa/index.html',
   '/wuju-pwa/css/style.css',
+  '/wuju-pwa/js/dexie.min.js',
   '/wuju-pwa/js/db.js',
   '/wuju-pwa/js/app.js',
-  '/wuju-pwa/manifest.json',
-  'https://unpkg.com/dexie@4.0.4/dist/dexie.js'
+  '/wuju-pwa/manifest.json'
 ];
 
 self.addEventListener('install', e => {
@@ -19,14 +19,15 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+      Promise.all(keys.map(k => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', e => {
+  // Always try network first, fall back to cache
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    fetch(e.request).catch(() => caches.match(e.request))
   );
 });

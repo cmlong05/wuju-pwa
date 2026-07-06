@@ -1,5 +1,13 @@
 /* ── 物居 PWA — IndexedDB Data Layer ── */
 
+// 兼容非 HTTPS 环境的 UUID 生成
+function uuid() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
 const db = new Dexie('WujuDB');
 
 db.version(1).stores({
@@ -124,13 +132,13 @@ async function seedSampleData() {
   const now = Date.now();
   const day = 86400000;
 
-  const homeId = crypto.randomUUID();
-  const kitchenId = crypto.randomUUID();
-  const fridgeId = crypto.randomUUID();
-  const coldId = crypto.randomUUID();
-  const freezerId = crypto.randomUUID();
-  const cabinetId = crypto.randomUUID();
-  const wardrobeId = crypto.randomUUID();
+  const homeId = uuid();
+  const kitchenId = uuid();
+  const fridgeId = uuid();
+  const coldId = uuid();
+  const freezerId = uuid();
+  const cabinetId = uuid();
+  const wardrobeId = uuid();
 
   await db.containers.bulkPut([
     { id: homeId, name: '家', icon: '🏠', color: '#5B8FF9', sortOrder: 0, notes: '', createdAt: now, parentId: '' },
@@ -142,18 +150,18 @@ async function seedSampleData() {
     { id: wardrobeId, name: '衣柜', icon: '👕', color: '#FF99C3', sortOrder: 1, notes: '', createdAt: now, parentId: homeId },
   ]);
 
-  const eggId = crypto.randomUUID();
-  const milkId = crypto.randomUUID();
-  const yogurtId = crypto.randomUUID();
-  const dumplingId = crypto.randomUUID();
-  const riceId = crypto.randomUUID();
-  const saltId = crypto.randomUUID();
-  const medicineId = crypto.randomUUID();
-  const shirtId = crypto.randomUUID();
-  const tvId = crypto.randomUUID();
-  const remoteId = crypto.randomUUID();
-  const spareRemoteId = crypto.randomUUID();
-  const sofaId = crypto.randomUUID();
+  const eggId = uuid();
+  const milkId = uuid();
+  const yogurtId = uuid();
+  const dumplingId = uuid();
+  const riceId = uuid();
+  const saltId = uuid();
+  const medicineId = uuid();
+  const shirtId = uuid();
+  const tvId = uuid();
+  const remoteId = uuid();
+  const spareRemoteId = uuid();
+  const sofaId = uuid();
 
   await db.items.bulkPut([
     { id: eggId, name: '鸡蛋', quantity: 8, category: '食品', expiryDate: now + 7 * day, addedDate: now, notes: '', containerId: coldId },
@@ -171,7 +179,7 @@ async function seedSampleData() {
   ]);
 
   await db.relations.bulkPut([
-    { id: crypto.randomUUID(), sourceId: remoteId, targetId: tvId, relationType: '属于', notes: '原装遥控器', createdAt: now },
-    { id: crypto.randomUUID(), sourceId: spareRemoteId, targetId: remoteId, relationType: '备用', notes: '淘宝买的', createdAt: now },
+    { id: uuid(), sourceId: remoteId, targetId: tvId, relationType: '属于', notes: '原装遥控器', createdAt: now },
+    { id: uuid(), sourceId: spareRemoteId, targetId: remoteId, relationType: '备用', notes: '淘宝买的', createdAt: now },
   ]);
 }

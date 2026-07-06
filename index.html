@@ -20,7 +20,13 @@
       <span class="title">物居</span>
       <span class="action"></span>
     </div>
-    <div id="content"></div>
+    <div id="content">
+      <div style="text-align:center;padding:40px 16px;color:var(--text-secondary)">
+        <div style="font-size:48px;margin-bottom:12px">⏳</div>
+        <div>加载中…</div>
+        <div id="load-status" style="font-size:13px;margin-top:8px"></div>
+      </div>
+    </div>
     <div id="tabs">
       <button class="tab active" data-tab="items">
         <span class="icon">📋</span>物品
@@ -34,8 +40,20 @@
     </div>
   </div>
 
-  <script src="https://unpkg.com/dexie@4.0.4/dist/dexie.js"></script>
-  <script src="/wuju-pwa/js/db.js"></script>
-  <script src="/wuju-pwa/js/app.js"></script>
+  <script>
+    var _loadStatus = document.getElementById('load-status');
+    function _status(msg) { if(_loadStatus) _loadStatus.textContent = msg; }
+    _status('正在加载资源…');
+  </script>
+  <script src="/wuju-pwa/js/dexie.min.js?v=4"></script>
+  <script>
+    if (typeof Dexie === 'undefined') {
+      _status('❌ Dexie 库未加载，请检查网络');
+    } else {
+      _status('✅ Dexie 就绪，初始化数据库…');
+    }
+  </script>
+  <script src="/wuju-pwa/js/db.js?v=4"></script>
+  <script src="/wuju-pwa/js/app.js?v=4"></script>
 </body>
 </html>
