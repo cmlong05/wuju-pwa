@@ -124,7 +124,7 @@ async function render() {
     titleEl.textContent = '物居';
     updateTabBar();
     // Set action button based on tab
-    actionBtn.style.display = (state.tab === 'alerts') ? 'none' : 'block';
+    actionBtn.style.display = (state.tab === 'alerts' || state.tab === 'scan') ? 'none' : 'block';
     actionBtn.innerHTML = '';
     if (state.tab === 'items') {
       actionBtn.appendChild(h('span', { className: 'add-btn', onclick: () => navigate('item-edit', {}) }, '+'));
@@ -135,6 +135,7 @@ async function render() {
       case 'items': await renderItemList(content); break;
       case 'spaces': await renderContainerTree(content); break;
       case 'alerts': await renderAlertView(content); break;
+      case 'scan': startUniversalScan(); break;
     }
   } else {
     switch (state.screen) {
@@ -451,10 +452,12 @@ async function renderItemDetail(container, itemId) {
     );
     // Management link
     relRows.push(h('div', { className: 'detail-row', onclick: () => navigate('relation-edit', { itemId }), style: 'cursor:pointer;justify-content:center;color:var(--tint)' }, '🔗 管理关联'));
+    relRows.push(h('div', { className: 'detail-row', onclick: () => startAssociationScan(itemId), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, '📷 扫描关联'));
     wrapper.appendChild(sectionBlock('关联物品', relRows));
   } else {
     wrapper.appendChild(sectionBlock('关联物品', [
-      h('div', { className: 'detail-row', onclick: () => navigate('relation-edit', { itemId }), style: 'cursor:pointer;justify-content:center;color:var(--tint)' }, '🔗 添加关联')
+      h('div', { className: 'detail-row', onclick: () => navigate('relation-edit', { itemId }), style: 'cursor:pointer;justify-content:center;color:var(--tint)' }, '🔗 添加关联'),
+      h('div', { className: 'detail-row', onclick: () => startAssociationScan(itemId), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, '📷 扫描关联')
     ]));
   }
 
@@ -473,6 +476,7 @@ async function renderItemDetail(container, itemId) {
   const actionBtn = $('#header .action');
   actionBtn.style.display = 'block';
   actionBtn.innerHTML = '';
+  actionBtn.appendChild(h('span', { onclick: () => showQRModal('item', itemId, item.name), style: 'margin-right:8px' }, '📱'));
   actionBtn.appendChild(h('span', { onclick: () => navigate('item-edit', { itemId }), style: 'margin-right:8px' }, '编辑'));
   actionBtn.appendChild(h('span', { onclick: () => showDeleteDialog('物品', item.name, async () => {
     await deleteItemRelations(itemId);
@@ -618,6 +622,7 @@ async function renderContainerDetail(container, containerId) {
   const actionBtn = $('#header .action');
   actionBtn.style.display = 'block';
   actionBtn.innerHTML = '';
+  actionBtn.appendChild(h('span', { onclick: () => showQRModal('container', c.id, c.name), style: 'margin-right:8px' }, '📱'));
   actionBtn.appendChild(h('span', { onclick: () => navigate('container-edit', { containerId: c.id, parentId: c.parentId }), style: 'margin-right:8px' }, '编辑'));
   actionBtn.appendChild(h('span', { onclick: () => showDeleteDialog('容器', c.name + '（子容器将被一并删除）', async () => {
     await deleteContainerCascade(containerId);
@@ -838,6 +843,146 @@ function showDeleteDialog(type, name, onConfirm) {
     ])
   ]);
   document.body.appendChild(overlay);
+}
+
+// ── QR 码 ──
+function showQRModal(type, id, name) {
+  const text = 'wuju:' + type + ':' + id;
+  const qr = qrcode(0, 'M');
+  qr.addData(text);
+  qr.make();
+  const svg = qr.createSvgTag(4, 0);
+
+  const overlay = h('div', { className: 'overlay', onclick: (e) => { if (e.target === overlay) overlay.remove(); } }, [
+    h('div', { className: 'dialog', style: 'max-width:320px;text-align:center' }, [
+      h('div', { style: 'margin-bottom:12px' }, [
+        h('div', { style: 'font-size:11px;color:var(--text-secondary);margin-bottom:4px' },
+          type === 'item' ? '📦 物品' : '🗂️ 容器'),
+        h('div', { style: 'font-weight:600;font-size:17px' }, name),
+      ]),
+      h('div', { id: 'qr-svg', style: 'display:flex;justify-content:center' }),
+      h('div', { style: 'font-size:11px;color:var(--text-tertiary);margin-top:8px;word-break:break-all' }, text),
+      h('div', { className: 'btns', style: 'margin-top:16px' }, [
+        h('button', {
+          style: 'flex:1;padding:12px;border-radius:8px;border:none;background:#E5E5EA;cursor:pointer;font-size:15px',
+          onclick: () => overlay.remove()
+        }, '关闭'),
+        h('button', {
+          style: 'flex:1;padding:12px;border-radius:8px;border:none;background:var(--tint);color:#fff;cursor:pointer;font-size:15px;font-weight:600',
+          onclick: () => { window.print(); }
+        }, '🖨 打印'),
+      ]),
+    ])
+  ]);
+  document.body.appendChild(overlay);
+
+  // Inject SVG
+  var svgContainer = document.getElementById('qr-svg');
+  if (svgContainer) svgContainer.innerHTML = svg;
+}
+
+// Print stylesheet for QR code
+(function() {
+  var style = document.createElement('style');
+  style.id = 'qr-print-style';
+  style.textContent = '@media print { body > *:not(.overlay) { display: none !important; } .overlay { position: static !important; background: none !important; } .overlay .dialog { box-shadow: none !important; max-width: 100% !important; } .overlay .btns { display: none !important; } }';
+  document.head.appendChild(style);
+})();
+
+// ── QR 扫描 ──
+let _html5QrScanner = null;
+
+async function showScanner(onScan, mode) {
+  // mode: 'auto' = detect item/container, 'container' = only match containers (for association)
+  const overlay = h('div', { className: 'overlay', style: 'background:rgba(0,0,0,.9);flex-direction:column;gap:0' }, [
+    h('div', { style: 'color:#fff;padding:16px;text-align:center;font-size:17px;font-weight:600;flex-shrink:0' },
+      mode === 'container' ? '扫描容器二维码' : '扫描二维码'),
+    h('div', { id: 'qr-reader', style: 'width:100%;max-width:400px;flex:1' }),
+    h('button', {
+      style: 'margin:16px;padding:12px 24px;border-radius:8px;border:none;background:rgba(255,255,255,.2);color:#fff;font-size:15px;cursor:pointer;flex-shrink:0',
+      onclick: () => { stopScanner(); overlay.remove(); }
+    }, '关闭'),
+  ]);
+  document.body.appendChild(overlay);
+
+  try {
+    _html5QrScanner = new Html5Qrcode('qr-reader');
+    await _html5QrScanner.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: 250 },
+      (decodedText) => {
+        stopScanner();
+        overlay.remove();
+        onScan(decodedText);
+      },
+      () => {} // ignore scan failures
+    );
+  } catch (e) {
+    overlay.querySelector('#qr-reader').innerHTML =
+      '<div style="color:#fff;text-align:center;padding:40px">' +
+      '<div style="font-size:48px;margin-bottom:12px">📷</div>' +
+      '<div>无法启动相机</div>' +
+      '<div style="font-size:13px;color:#aaa;margin-top:8px">请确认已授予相机权限</div>' +
+      '</div>';
+  }
+}
+
+function stopScanner() {
+  if (_html5QrScanner) {
+    try { _html5QrScanner.stop().catch(() => {}); } catch(e) {}
+    _html5QrScanner = null;
+  }
+}
+
+// 通用扫描入口 — 自动判断物品/容器
+function startUniversalScan() {
+  showScanner((text) => {
+    const parts = text.split(':');
+    if (parts.length < 3 || parts[0] !== 'wuju') {
+      alert('无法识别的二维码');
+      return;
+    }
+    const type = parts[1];
+    const id = parts.slice(2).join(':');
+    if (type === 'item') {
+      navigate('item-detail', { itemId: id });
+    } else if (type === 'container') {
+      navigate('container-detail', { containerId: id });
+    } else {
+      alert('未知格式: ' + text);
+    }
+  }, 'auto');
+}
+
+// 扫描关联 — 只匹配容器
+function startAssociationScan(itemId) {
+  showScanner(async (text) => {
+    const parts = text.split(':');
+    if (parts.length < 3 || parts[0] !== 'wuju' || parts[1] !== 'container') {
+      alert('请扫描容器二维码');
+      return;
+    }
+    const containerId = parts.slice(2).join(':');
+    // Check if already associated
+    const existing = await db.relations
+      .where('sourceId').equals(itemId)
+      .and(r => r.relationType === '属于' && r.targetId === containerId)
+      .count();
+    if (existing > 0) {
+      alert('已关联到此容器');
+      return;
+    }
+    await db.relations.put({
+      id: uuid(),
+      sourceId: itemId,
+      targetId: containerId,
+      relationType: '属于',
+      notes: '扫码关联',
+      createdAt: Date.now()
+    });
+    // Go back to item detail
+    navigate('item-detail', { itemId });
+  }, 'container');
 }
 
 // ── Initialize ──

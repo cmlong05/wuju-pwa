@@ -37,6 +37,9 @@
       <button class="tab" data-tab="alerts">
         <span class="icon">🔔</span>提醒
       </button>
+      <button class="tab" data-tab="scan">
+        <span class="icon">📷</span>扫描
+      </button>
     </div>
   </div>
 
@@ -45,7 +48,9 @@
     function _status(msg) { if(_loadStatus) _loadStatus.textContent = msg; }
     _status('正在加载资源…');
   </script>
-  <script src="/wuju-pwa/js/dexie.min.js?v=4"></script>
+  <script src="/wuju-pwa/js/dexie.min.js?v=5"></script>
+  <script src="/wuju-pwa/js/qrcode.min.js?v=1"></script>
+  <script src="/wuju-pwa/js/html5-qrcode.min.js?v=1"></script>
   <script>
     if (typeof Dexie === 'undefined') {
       _status('❌ Dexie 库未加载，请检查网络');
@@ -53,7 +58,7 @@
       _status('✅ Dexie 就绪，初始化数据库…');
     }
   </script>
-  <script src="/wuju-pwa/js/db.js?v=4"></script>
-  <script src="/wuju-pwa/js/app.js?v=4"></script>
+  <script src="/wuju-pwa/js/db.js?v=5"></script>
+  <script src="/wuju-pwa/js/app.js?v=5"></script>
 </body>
 </html>
