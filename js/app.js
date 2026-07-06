@@ -894,17 +894,62 @@ let _html5QrScanner = null;
 
 async function showScanner(onScan, mode) {
   // mode: 'auto' = detect item/container, 'container' = only match containers (for association)
+  const canCamera = window.isSecureContext && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
+  const title = mode === 'container' ? '扫描容器二维码' : '扫描二维码';
+
+  // File-based scanning (via upload)
+  function doFileScan(file) {
+    const reader = new Html5Qrcode('qr-reader-temp');
+    reader.scanFile(file, false)
+      .then(decodedText => {
+        stopScanner();
+        overlay.remove();
+        onScan(decodedText);
+      })
+      .catch(err => {
+        var area = document.getElementById('qr-reader');
+        if (area) {
+          area.innerHTML = '<div style="color:#ff6b6b;text-align:center;padding:20px">❌ 未识别到二维码<br><span style="font-size:13px;color:#aaa">请换一张清晰的图片重试</span></div>';
+        }
+      });
+  }
+
   const overlay = h('div', { className: 'overlay', style: 'background:rgba(0,0,0,.9);flex-direction:column;gap:0' }, [
-    h('div', { style: 'color:#fff;padding:16px;text-align:center;font-size:17px;font-weight:600;flex-shrink:0' },
-      mode === 'container' ? '扫描容器二维码' : '扫描二维码'),
-    h('div', { id: 'qr-reader', style: 'width:100%;max-width:400px;flex:1' }),
+    h('div', { style: 'color:#fff;padding:16px;text-align:center;font-size:17px;font-weight:600;flex-shrink:0' }, title),
+    h('div', { id: 'qr-reader', style: 'width:100%;max-width:400px;flex:1;display:flex;align-items:center;justify-content:center' }),
+    // File upload button — always visible
+    h('div', { style: 'padding:0 16px 8px;flex-shrink:0' }, [
+      h('label', {
+        style: 'display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:10px;border:1px dashed rgba(255,255,255,.4);color:#fff;font-size:15px;cursor:pointer;background:rgba(255,255,255,.05)',
+        htmlFor: 'qr-file-input'
+      }, [h('span', {}, '🖼'), h('span', {}, '从相册选择二维码图片')]),
+      h('input', {
+        type: 'file', id: 'qr-file-input', accept: 'image/*', capture: 'environment',
+        style: 'display:none',
+        onchange: (e) => { if (e.target.files[0]) doFileScan(e.target.files[0]); }
+      })
+    ]),
     h('button', {
-      style: 'margin:16px;padding:12px 24px;border-radius:8px;border:none;background:rgba(255,255,255,.2);color:#fff;font-size:15px;cursor:pointer;flex-shrink:0',
+      style: 'margin:8px 16px 16px;padding:12px 24px;border-radius:8px;border:none;background:rgba(255,255,255,.2);color:#fff;font-size:15px;cursor:pointer;flex-shrink:0',
       onclick: () => { stopScanner(); overlay.remove(); }
     }, '关闭'),
   ]);
   document.body.appendChild(overlay);
 
+  if (!canCamera) {
+    // Show file upload hint immediately
+    var area = document.getElementById('qr-reader');
+    if (area) {
+      area.innerHTML = '<div style="color:#fff;text-align:center;padding:30px">' +
+        '<div style="font-size:48px;margin-bottom:12px">📱</div>' +
+        '<div style="font-size:16px;margin-bottom:8px">当前环境不支持摄像头</div>' +
+        '<div style="font-size:13px;color:#aaa;line-height:1.6">请点击下方按钮<br>从相册选择二维码图片扫描</div>' +
+        '</div>';
+    }
+    return;
+  }
+
+  // Try camera
   try {
     _html5QrScanner = new Html5Qrcode('qr-reader');
     await _html5QrScanner.start(
@@ -918,12 +963,14 @@ async function showScanner(onScan, mode) {
       () => {} // ignore scan failures
     );
   } catch (e) {
-    overlay.querySelector('#qr-reader').innerHTML =
-      '<div style="color:#fff;text-align:center;padding:40px">' +
-      '<div style="font-size:48px;margin-bottom:12px">📷</div>' +
-      '<div>无法启动相机</div>' +
-      '<div style="font-size:13px;color:#aaa;margin-top:8px">请确认已授予相机权限</div>' +
-      '</div>';
+    var area = document.getElementById('qr-reader');
+    if (area) {
+      area.innerHTML = '<div style="color:#fff;text-align:center;padding:30px">' +
+        '<div style="font-size:48px;margin-bottom:12px">📱</div>' +
+        '<div style="font-size:16px;margin-bottom:8px">无法启动摄像头</div>' +
+        '<div style="font-size:13px;color:#aaa;line-height:1.6">请点击下方按钮<br>从相册选择二维码图片</div>' +
+        '</div>';
+    }
   }
 }
 
