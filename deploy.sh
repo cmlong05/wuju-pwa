@@ -5,33 +5,25 @@
 set -e
 
 DOMAIN="wuju.bumooby.com"
-CERT_DIR="/opt/data/wuju-pwa/certbot/conf"
-CF_INI="/opt/data/wuju-pwa/certbot/cloudflare.ini"
+PROJECT="/opt/data/wuju-pwa"
+HOST_PROJECT="/srv/dev-disk-by-uuid-e6381e02-8c81-433f-85f3-76b093022769/docker/volumes/hermes_hermes_data/_data/wuju-pwa"
 
-# 检查 cloudflare.ini 是否已配置
+CF_INI="${PROJECT}/certbot/cloudflare.ini"
+CERT_CONF="${PROJECT}/certbot/conf"
+
+# Check cloudflare.ini
 if grep -q "YOUR_CLOUDFLARE_API_TOKEN_HERE" "$CF_INI" 2>/dev/null; then
-    echo "❌ 请先在 $CF_INI 中填入 Cloudflare API Token"
-    echo "   去 https://dash.cloudflare.com/profile/api-tokens 创建"
-    echo "   权限: Zone:DNS:Edit, 区域: bumooby.com"
+    echo "❌ 请先在 cloudflare.ini 中填入 Cloudflare API Token"
     exit 1
 fi
-chmod 600 "$CF_INI"
 
-echo "=== 检查 DNS ==="
-if ! python3 -c "import socket; print(socket.gethostbyname('$DOMAIN'))" 2>/dev/null; then
-    echo "❌ $DOMAIN DNS 未解析！请确认 A 记录已添加: wuju → 27.29.232.38"
-    exit 1
-fi
-echo "✅ DNS 已解析"
-
-echo ""
 echo "=== 签发 Let's Encrypt 证书 (DNS-01) ==="
 docker run --rm \
-    -v "$CERT_DIR:/etc/letsencrypt" \
-    -v "$CF_INI:/cloudflare.ini:ro" \
+    -v "${HOST_PROJECT}/certbot/conf:/etc/letsencrypt" \
+    -v "${HOST_PROJECT}/certbot/cloudflare.ini:/root/.cf.ini:ro" \
     certbot/dns-cloudflare certonly \
     --dns-cloudflare \
-    --dns-cloudflare-credentials /cloudflare.ini \
+    --dns-cloudflare-credentials /root/.cf.ini \
     -d "$DOMAIN" \
     --agree-tos \
     --email admin@bumooby.com \
@@ -39,15 +31,15 @@ docker run --rm \
     --keep-until-expiring
 
 echo ""
-echo "=== 构建并部署 wuju-pwa ==="
-cd /opt/data/wuju-pwa
+echo "=== 部署 wuju-pwa ==="
+cd "$PROJECT"
 docker build -t wuju-pwa . -q
 docker rm -f wuju-pwa 2>/dev/null || true
 docker run -d \
     --name wuju-pwa \
     --restart unless-stopped \
     --network hermes_hermes-net \
-    -v "$CERT_DIR:/etc/letsencrypt:ro" \
+    -v "${HOST_PROJECT}/certbot/conf:/etc/letsencrypt:ro" \
     -p 8088:80 \
     -p 8444:443 \
     wuju-pwa
@@ -55,12 +47,8 @@ docker run -d \
 echo ""
 echo "=== 验证 ==="
 sleep 2
-echo "HTTP:  curl -s -o /dev/null -w '%{http_code}' http://$DOMAIN:8088/wuju-pwa/"
-curl -s -o /dev/null -w "HTTP %{http_code}" "http://$DOMAIN:8088/wuju-pwa/"
-echo ""
-echo "HTTPS: curl -s -o /dev/null -w '%{http_code}' https://$DOMAIN:8444/wuju-pwa/"
-curl -s -o /dev/null -w "HTTPS %{http_code}" --insecure "https://$DOMAIN:8444/wuju-pwa/"
+echo -n "HTTPS: "
+curl -sk -o /dev/null -w '%{http_code}' "https://$DOMAIN:8444/wuju-pwa/"
 echo ""
 echo "✅ 部署完成"
-echo "   HTTP:  http://$DOMAIN:8088/wuju-pwa/"
-echo "   HTTPS: https://$DOMAIN:8444/wuju-pwa/"
+echo "   https://$DOMAIN:8444/wuju-pwa/"
