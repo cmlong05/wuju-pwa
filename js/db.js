@@ -16,6 +16,20 @@ db.version(1).stores({
   relations: 'id, sourceId, targetId, relationType'
 });
 
+db.version(2).stores({
+  containers: 'id, name, parentId, sortOrder',
+  items: 'id, name, category, containerId, expiryDate, addedDate',
+  relations: 'id, sourceId, targetId, relationType'
+}).upgrade(tx => {
+  return tx.table('items').toCollection().modify(item => {
+    if (!item.image) item.image = '';
+  }).then(() => {
+    return tx.table('containers').toCollection().modify(c => {
+      if (!c.image) c.image = '';
+    });
+  });
+});
+
 // ── Container helpers ──
 async function getRootContainers() {
   return db.containers.where('parentId').equals('').toArray()

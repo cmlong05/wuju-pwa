@@ -42,6 +42,7 @@ function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
     if (k === 'className') el.className = v;
+    else if (k === 'htmlFor') el.htmlFor = v;
     else if (k === 'onclick') el.addEventListener('click', v);
     else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
     else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
@@ -417,6 +418,13 @@ async function renderItemDetail(container, itemId) {
     ])
   ]));
 
+  // Image
+  if (item.image) {
+    wrapper.appendChild(h('div', { style: 'padding:12px;text-align:center' }, [
+      h('img', { src: item.image, style: 'max-width:100%;max-height:240px;border-radius:10px;border:1px solid var(--border)' })
+    ]));
+  }
+
   // Info section
   const infoRows = [];
   infoRows.push(rowItem('📅 添加日期', formatDate(item.addedDate)));
@@ -495,6 +503,28 @@ async function renderItemEdit(container, itemId) {
   // Name
   form.appendChild(formGroup('物品名称', h('input', { type: 'text', id: 'edit-name', value: item?.name || '', placeholder: '输入物品名称' })));
 
+  // Image
+  let imageData = item?.image || '';
+  const imgPreview = h('div', { id: 'edit-img-preview', style: 'margin-top:8px;text-align:center' });
+  if (imageData) {
+    imgPreview.appendChild(h('img', { src: imageData, style: 'max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border)' }));
+  }
+  const imgInput = h('input', { type: 'file', id: 'edit-img', accept: 'image/*', capture: 'environment',
+    style: 'width:100%;font-size:15px',
+    onchange: (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        imageData = reader.result;
+        imgPreview.innerHTML = '';
+        imgPreview.appendChild(h('img', { src: imageData, style: 'max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border)' }));
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+  form.appendChild(formGroup('照片', [imgInput, imgPreview]));
+
   // Quantity toggle
   const hasQty = item?.quantity != null;
   form.appendChild(toggleField('记录数量', 'edit-has-qty', hasQty, 'edit-qty-row'));
@@ -545,6 +575,7 @@ async function renderItemEdit(container, itemId) {
 
     const data = {
       name,
+      image: imageData,
       quantity: document.getElementById('edit-has-qty').classList.contains('on') ? parseInt($('#edit-qty').value) || null : null,
       category: $('#edit-category').value,
       expiryDate: document.getElementById('edit-has-expiry').classList.contains('on') ? new Date($('#edit-expiry').value).getTime() : null,
@@ -580,6 +611,13 @@ async function renderContainerDetail(container, containerId) {
       h('div', { style: 'font-size:13px;color:var(--text-secondary);margin-top:4px' }, path.map(p => p.name).join(' > '))
     ])
   ]));
+
+  // Image
+  if (c.image) {
+    wrapper.appendChild(h('div', { style: 'padding:12px;text-align:center' }, [
+      h('img', { src: c.image, style: 'max-width:100%;max-height:240px;border-radius:10px;border:1px solid var(--border)' })
+    ]));
+  }
 
   // Sub-containers
   const children = await db.containers.where('parentId').equals(containerId).toArray();
@@ -637,6 +675,30 @@ async function renderContainerEdit(container, containerId, presetParentId) {
 
   const form = h('div', { className: 'form' });
   form.appendChild(formGroup('容器名称', h('input', { type: 'text', id: 'cedit-name', value: c?.name || '', placeholder: '输入容器名称' })));
+
+  // Image
+  let cImageData = c?.image || '';
+  const cImgPreview = h('div', { id: 'cedit-img-preview', style: 'margin-top:8px;text-align:center' });
+  if (cImageData) {
+    cImgPreview.appendChild(h('img', { src: cImageData, style: 'max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border)' }));
+  }
+  form.appendChild(formGroup('照片', [
+    h('input', { type: 'file', id: 'cedit-img', accept: 'image/*', capture: 'environment',
+      style: 'width:100%;font-size:15px',
+      onchange: (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          cImageData = reader.result;
+          cImgPreview.innerHTML = '';
+          cImgPreview.appendChild(h('img', { src: cImageData, style: 'max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border)' }));
+        };
+        reader.readAsDataURL(file);
+      }
+    }),
+    cImgPreview
+  ]));
 
   // Icon picker
   const iconGrid = h('div', { className: 'icon-grid' });
@@ -700,12 +762,12 @@ async function renderContainerEdit(container, containerId, presetParentId) {
     const notes = $('#cedit-notes').value;
 
     if (isEdit) {
-      await db.containers.update(containerId, { name, icon, color, parentId, notes });
+      await db.containers.update(containerId, { name, icon, color, parentId, notes, image: cImageData });
     } else {
       const maxSort = await db.containers.where('parentId').equals(parentId).count();
       await db.containers.put({
         id: uuid(), name, icon, color, sortOrder: maxSort,
-        notes, parentId, createdAt: Date.now()
+        notes, parentId, createdAt: Date.now(), image: cImageData
       });
     }
     goBack();
