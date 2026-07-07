@@ -4,3 +4,5 @@ docker-compose.yml
 .git
 .gitignore
 PLAN.md
+certbot/
+deploy.sh
