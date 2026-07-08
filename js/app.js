@@ -122,7 +122,7 @@ async function render() {
   header.className = '';
 
   if (state.screen === 'tabs') {
-    titleEl.textContent = '物居';
+    titleEl.innerHTML = '物居 <span style="font-size:11px;color:var(--text-tertiary);font-weight:400">v19</span>';
     updateTabBar();
     // Set action button based on tab
     actionBtn.style.display = (state.tab === 'alerts' || state.tab === 'scan') ? 'none' : 'block';
@@ -441,12 +441,19 @@ async function renderItemDetail(container, itemId) {
     ]));
   }
 
+  wrapper.appendChild(sectionBlock('基本信息', infoRows));
+
+  // 所在位置 — 独立区块
+  const locRows = [];
   if (item.containerId) {
     const path = await getContainerPath(item.containerId);
-    infoRows.push(rowLink('📍 所在位置', path.map(c => c.name).join(' > '), () => navigate('container-detail', { containerId: item.containerId })));
+    locRows.push(rowLink('📍 ' + path.map(c => c.name).join(' > '), '', () => navigate('container-detail', { containerId: item.containerId })));
+    locRows.push(h('div', { className: 'detail-row', onclick: () => startLocationScan(itemId), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, '📷 扫描换位'));
+  } else {
+    locRows.push(h('div', { className: 'detail-row', style: 'color:var(--text-tertiary)' }, '未设置位置'));
+    locRows.push(h('div', { className: 'detail-row', onclick: () => startLocationScan(itemId), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, '📷 扫描关联位置'));
   }
-
-  wrapper.appendChild(sectionBlock('基本信息', infoRows));
+  wrapper.appendChild(sectionBlock('📍 所在位置', locRows));
 
   // Relations
   const related = await getItemRelations(itemId);
@@ -484,7 +491,7 @@ async function renderItemDetail(container, itemId) {
   const actionBtn = $('#header .action');
   actionBtn.style.display = 'block';
   actionBtn.innerHTML = '';
-  actionBtn.appendChild(h('span', { onclick: () => showQRModal('item', itemId, item.name), style: 'margin-right:8px' }, '📱'));
+  actionBtn.appendChild(h('span', { onclick: () => showQRModal('item', itemId, item.name, item.qrCode), style: 'margin-right:8px' }, '🔲'));
   actionBtn.appendChild(h('span', { onclick: () => navigate('item-edit', { itemId }), style: 'margin-right:8px' }, '编辑'));
   actionBtn.appendChild(h('span', { onclick: () => showDeleteDialog('物品', item.name, async () => {
     await deleteItemRelations(itemId);
@@ -523,7 +530,7 @@ async function renderItemEdit(container, itemId) {
       reader.readAsDataURL(file);
     }
   });
-  form.appendChild(formGroup('照片', [imgInput, imgPreview]));
+  form.appendChild(formGroup('照片', h('div', {}, [imgInput, imgPreview])));
 
   // Quantity toggle
   const hasQty = item?.quantity != null;
@@ -619,6 +626,18 @@ async function renderContainerDetail(container, containerId) {
     ]));
   }
 
+  // 父容器 — 独立区块
+  const parentRows = [];
+  if (c.parentId) {
+    const parentPath = await getContainerPath(c.parentId);
+    parentRows.push(rowLink('📍 ' + parentPath.map(p => p.name).join(' > '), '', () => navigate('container-detail', { containerId: c.parentId })));
+    parentRows.push(h('div', { className: 'detail-row', onclick: () => startContainerParentScan(containerId), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, '📷 扫描换父容器'));
+  } else {
+    parentRows.push(h('div', { className: 'detail-row', style: 'color:var(--text-tertiary)' }, '顶级容器（无父容器）'));
+    parentRows.push(h('div', { className: 'detail-row', onclick: () => startContainerParentScan(containerId), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, '📷 扫描关联父容器'));
+  }
+  wrapper.appendChild(sectionBlock('📍 父容器', parentRows));
+
   // Sub-containers
   const children = await db.containers.where('parentId').equals(containerId).toArray();
   children.sort((a, b) => a.sortOrder - b.sortOrder);
@@ -647,10 +666,12 @@ async function renderContainerDetail(container, containerId) {
         h('span', { className: 'chevron' }, '›')
       ])
     );
+    itemRows.push(h('div', { className: 'detail-row', onclick: () => startContainerItemScan(containerId), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, '📷 扫描添加物品'));
     wrapper.appendChild(sectionBlock('物品 (' + items.length + ')', itemRows));
   } else {
     wrapper.appendChild(sectionBlock('物品 (0)', [
-      h('div', { className: 'detail-row', style: 'color:var(--text-secondary)' }, '此容器中没有物品')
+      h('div', { className: 'detail-row', style: 'color:var(--text-secondary)' }, '此容器中没有物品'),
+      h('div', { className: 'detail-row', onclick: () => startContainerItemScan(containerId), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, '📷 扫描添加物品')
     ]));
   }
 
@@ -660,7 +681,7 @@ async function renderContainerDetail(container, containerId) {
   const actionBtn = $('#header .action');
   actionBtn.style.display = 'block';
   actionBtn.innerHTML = '';
-  actionBtn.appendChild(h('span', { onclick: () => showQRModal('container', c.id, c.name), style: 'margin-right:8px' }, '📱'));
+  actionBtn.appendChild(h('span', { onclick: () => showQRModal('container', c.id, c.name, c.qrCode), style: 'margin-right:8px' }, '🔲'));
   actionBtn.appendChild(h('span', { onclick: () => navigate('container-edit', { containerId: c.id, parentId: c.parentId }), style: 'margin-right:8px' }, '编辑'));
   actionBtn.appendChild(h('span', { onclick: () => showDeleteDialog('容器', c.name + '（子容器将被一并删除）', async () => {
     await deleteContainerCascade(containerId);
@@ -682,7 +703,7 @@ async function renderContainerEdit(container, containerId, presetParentId) {
   if (cImageData) {
     cImgPreview.appendChild(h('img', { src: cImageData, style: 'max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border)' }));
   }
-  form.appendChild(formGroup('照片', [
+  form.appendChild(formGroup('照片', h('div', {}, [
     h('input', { type: 'file', id: 'cedit-img', accept: 'image/*', capture: 'environment',
       style: 'width:100%;font-size:15px',
       onchange: (e) => {
@@ -698,7 +719,7 @@ async function renderContainerEdit(container, containerId, presetParentId) {
       }
     }),
     cImgPreview
-  ]));
+  ])));
 
   // Icon picker
   const iconGrid = h('div', { className: 'icon-grid' });
@@ -907,40 +928,70 @@ function showDeleteDialog(type, name, onConfirm) {
   document.body.appendChild(overlay);
 }
 
-// ── QR 码 ──
-function showQRModal(type, id, name) {
-  const text = 'wuju:' + type + ':' + id;
-  const qr = qrcode(0, 'M');
-  qr.addData(text);
-  qr.make();
-  const svg = qr.createSvgTag(4, 0);
+// ── QR/条码 Modal ──
+function showQRModal(type, id, name, savedCode) {
+  var currentText = savedCode || ('wuju:' + type + ':' + id);
 
-  const overlay = h('div', { className: 'overlay', onclick: (e) => { if (e.target === overlay) overlay.remove(); } }, [
-    h('div', { className: 'dialog', style: 'max-width:320px;text-align:center' }, [
+  function renderQRSVG() {
+    var qr = qrcode(0, 'M');
+    qr.addData(currentText);
+    qr.make();
+    return qr.createSvgTag(4, 0);
+  }
+
+  function refreshQR() {
+    var svgContainer = document.getElementById('qr-svg');
+    if (svgContainer) svgContainer.innerHTML = renderQRSVG();
+    var textEl = document.getElementById('qr-text');
+    if (textEl) textEl.textContent = currentText;
+  }
+
+  async function doScan() {
+    showScanner(async function(scannedText) {
+      // Check duplicate — same code can't be used by another item/container
+      var dupItem = await db.items.filter(function(i) { return i.qrCode === scannedText && i.id !== id; }).first();
+      if (dupItem) { alert('此条码已被物品「' + dupItem.name + '」使用'); return; }
+      var dupContainer = await db.containers.filter(function(c) { return c.qrCode === scannedText && c.id !== id; }).first();
+      if (dupContainer) { alert('此条码已被容器「' + dupContainer.name + '」使用'); return; }
+
+      if (type === 'item') {
+        await db.items.update(id, { qrCode: scannedText });
+      } else {
+        await db.containers.update(id, { qrCode: scannedText });
+      }
+      // Close modal and re-render so the 🔲 button picks up the new qrCode
+      overlay.remove();
+      render();
+    }, 'auto');
+  }
+
+  var overlay = h('div', { className: 'overlay', onclick: function(e) { if (e.target === overlay) overlay.remove(); } }, [
+    h('div', { className: 'dialog', style: 'max-width:340px;text-align:center' }, [
       h('div', { style: 'margin-bottom:12px' }, [
         h('div', { style: 'font-size:11px;color:var(--text-secondary);margin-bottom:4px' },
           type === 'item' ? '📦 物品' : '🗂️ 容器'),
         h('div', { style: 'font-weight:600;font-size:17px' }, name),
       ]),
       h('div', { id: 'qr-svg', style: 'display:flex;justify-content:center' }),
-      h('div', { style: 'font-size:11px;color:var(--text-tertiary);margin-top:8px;word-break:break-all' }, text),
-      h('div', { className: 'btns', style: 'margin-top:16px' }, [
+      h('div', { id: 'qr-text', style: 'font-size:11px;color:var(--text-tertiary);margin-top:8px;word-break:break-all' }, currentText),
+      h('div', { className: 'btns', style: 'margin-top:16px;flex-wrap:wrap;gap:8px' }, [
         h('button', {
-          style: 'flex:1;padding:12px;border-radius:8px;border:none;background:#E5E5EA;cursor:pointer;font-size:15px',
-          onclick: () => overlay.remove()
+          style: 'flex:1;min-width:70px;padding:12px 6px;border-radius:8px;border:none;background:#E5E5EA;cursor:pointer;font-size:14px',
+          onclick: function() { overlay.remove(); }
         }, '关闭'),
         h('button', {
-          style: 'flex:1;padding:12px;border-radius:8px;border:none;background:var(--tint);color:#fff;cursor:pointer;font-size:15px;font-weight:600',
-          onclick: () => { window.print(); }
+          style: 'flex:1;min-width:70px;padding:12px 6px;border-radius:8px;border:none;background:var(--tint);color:#fff;cursor:pointer;font-size:14px',
+          onclick: function() { doScan(); }
+        }, '📷 扫描替换'),
+        h('button', {
+          style: 'flex:1;min-width:70px;padding:12px 6px;border-radius:8px;border:none;background:var(--tint);color:#fff;cursor:pointer;font-size:14px;font-weight:600',
+          onclick: function() { window.print(); }
         }, '🖨 打印'),
       ]),
     ])
   ]);
   document.body.appendChild(overlay);
-
-  // Inject SVG
-  var svgContainer = document.getElementById('qr-svg');
-  if (svgContainer) svgContainer.innerHTML = svg;
+  refreshQR();
 }
 
 // Print stylesheet for QR code
@@ -957,21 +1008,28 @@ let _html5QrScanner = null;
 async function showScanner(onScan, mode) {
   // mode: 'auto' = detect item/container, 'container' = only match containers (for association)
   const canCamera = window.isSecureContext && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
-  const title = mode === 'container' ? '扫描容器二维码' : '扫描二维码';
+  const title = mode === 'container' ? '扫描容器条码/二维码' : '扫描条码/二维码';
 
   // File-based scanning (via upload)
   function doFileScan(file) {
-    const reader = new Html5Qrcode('qr-reader-temp');
+    // Create a hidden container for the file scanner
+    var fileContainer = document.createElement('div');
+    fileContainer.id = 'qr-file-scan-container';
+    fileContainer.style.display = 'none';
+    document.body.appendChild(fileContainer);
+    var reader = new Html5Qrcode('qr-file-scan-container');
     reader.scanFile(file, false)
       .then(decodedText => {
+        fileContainer.remove();
         stopScanner();
         overlay.remove();
         onScan(decodedText);
       })
       .catch(err => {
+        fileContainer.remove();
         var area = document.getElementById('qr-reader');
         if (area) {
-          area.innerHTML = '<div style="color:#ff6b6b;text-align:center;padding:20px">❌ 未识别到二维码<br><span style="font-size:13px;color:#aaa">请换一张清晰的图片重试</span></div>';
+          area.innerHTML = '<div style="color:#ff6b6b;text-align:center;padding:20px">❌ 未识别到条码或二维码<br><span style="font-size:13px;color:#aaa">请换一张清晰的图片重试</span></div>';
         }
       });
   }
@@ -984,7 +1042,7 @@ async function showScanner(onScan, mode) {
       h('label', {
         style: 'display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:10px;border:1px dashed rgba(255,255,255,.4);color:#fff;font-size:15px;cursor:pointer;background:rgba(255,255,255,.05)',
         htmlFor: 'qr-file-input'
-      }, [h('span', {}, '🖼'), h('span', {}, '从相册选择二维码图片')]),
+      }, [h('span', {}, '🖼'), h('span', {}, '从相册选择条码/二维码图片')]),
       h('input', {
         type: 'file', id: 'qr-file-input', accept: 'image/*', capture: 'environment',
         style: 'display:none',
@@ -1005,7 +1063,7 @@ async function showScanner(onScan, mode) {
       area.innerHTML = '<div style="color:#fff;text-align:center;padding:30px">' +
         '<div style="font-size:48px;margin-bottom:12px">📱</div>' +
         '<div style="font-size:16px;margin-bottom:8px">当前环境不支持摄像头</div>' +
-        '<div style="font-size:13px;color:#aaa;line-height:1.6">请点击下方按钮<br>从相册选择二维码图片扫描</div>' +
+        '<div style="font-size:13px;color:#aaa;line-height:1.6">请点击下方按钮<br>从相册选择条码/二维码图片扫描</div>' +
         '</div>';
     }
     return;
@@ -1016,7 +1074,7 @@ async function showScanner(onScan, mode) {
     _html5QrScanner = new Html5Qrcode('qr-reader');
     await _html5QrScanner.start(
       { facingMode: 'environment' },
-      { fps: 10, qrbox: 250 },
+      { fps: 10, qrbox: { width: 300, height: 200 } },
       (decodedText) => {
         stopScanner();
         overlay.remove();
@@ -1030,7 +1088,7 @@ async function showScanner(onScan, mode) {
       area.innerHTML = '<div style="color:#fff;text-align:center;padding:30px">' +
         '<div style="font-size:48px;margin-bottom:12px">📱</div>' +
         '<div style="font-size:16px;margin-bottom:8px">无法启动摄像头</div>' +
-        '<div style="font-size:13px;color:#aaa;line-height:1.6">请点击下方按钮<br>从相册选择二维码图片</div>' +
+        '<div style="font-size:13px;color:#aaa;line-height:1.6">请点击下方按钮<br>从相册选择条码/二维码图片</div>' +
         '</div>';
     }
   }
@@ -1044,22 +1102,28 @@ function stopScanner() {
 }
 
 // 通用扫描入口 — 自动判断物品/容器
-function startUniversalScan() {
-  showScanner((text) => {
+async function startUniversalScan() {
+  showScanner(async (text) => {
+    // First try wuju:type:id format
     const parts = text.split(':');
-    if (parts.length < 3 || parts[0] !== 'wuju') {
-      alert('无法识别的二维码');
-      return;
+    if (parts.length >= 3 && parts[0] === 'wuju') {
+      const type = parts[1];
+      const id = parts.slice(2).join(':');
+      if (type === 'item') {
+        const item = await db.items.get(id);
+        if (item) { navigate('item-detail', { itemId: id }); return; }
+      } else if (type === 'container') {
+        const container = await db.containers.get(id);
+        if (container) { navigate('container-detail', { containerId: id }); return; }
+      }
     }
-    const type = parts[1];
-    const id = parts.slice(2).join(':');
-    if (type === 'item') {
-      navigate('item-detail', { itemId: id });
-    } else if (type === 'container') {
-      navigate('container-detail', { containerId: id });
-    } else {
-      alert('未知格式: ' + text);
-    }
+    // Try custom qrCode field — look up items and containers
+    const item = await db.items.filter(i => i.qrCode === text).first();
+    if (item) { navigate('item-detail', { itemId: item.id }); return; }
+    const container = await db.containers.filter(c => c.qrCode === text).first();
+    if (container) { navigate('container-detail', { containerId: container.id }); return; }
+    // Not recognized at all
+    alert('无法识别的条码/二维码:\n' + text + '\n\n请确认该条码已绑定到某个物品或容器');
   }, 'auto');
 }
 
@@ -1068,7 +1132,7 @@ function startAssociationScan(itemId) {
   showScanner(async (text) => {
     const parts = text.split(':');
     if (parts.length < 3 || parts[0] !== 'wuju' || parts[1] !== 'container') {
-      alert('请扫描容器二维码');
+      alert('请扫描容器条码/二维码');
       return;
     }
     const containerId = parts.slice(2).join(':');
@@ -1092,6 +1156,72 @@ function startAssociationScan(itemId) {
     // Go back to item detail
     navigate('item-detail', { itemId });
   }, 'container');
+}
+
+// 扫描关联位置 — 扫描容器条码，直接设置物品所在位置
+function startLocationScan(itemId) {
+  showScanner(async (text) => {
+    // Try wuju:container:id format
+    var containerId = '';
+    const parts = text.split(':');
+    if (parts.length >= 3 && parts[0] === 'wuju' && parts[1] === 'container') {
+      containerId = parts.slice(2).join(':');
+      const c = await db.containers.get(containerId);
+      if (!c) { alert('未找到该容器'); return; }
+    } else {
+      // Try custom qrCode field
+      const c = await db.containers.filter(c => c.qrCode === text).first();
+      if (!c) { alert('未识别到容器条码/二维码:\n' + text + '\n\n请扫描已绑定到容器的条码'); return; }
+      containerId = c.id;
+    }
+    // Update item's containerId
+    await db.items.update(itemId, { containerId: containerId });
+    // Refresh detail page
+    navigate('item-detail', { itemId: itemId });
+  }, 'container');
+}
+
+// 扫描关联父容器 — 扫描容器条码，设置本容器的父容器
+function startContainerParentScan(containerId) {
+  showScanner(async (text) => {
+    var parentId = '';
+    const parts = text.split(':');
+    if (parts.length >= 3 && parts[0] === 'wuju' && parts[1] === 'container') {
+      parentId = parts.slice(2).join(':');
+    } else {
+      const c = await db.containers.filter(c => c.qrCode === text).first();
+      if (!c) { alert('未识别到容器条码/二维码'); return; }
+      parentId = c.id;
+    }
+    if (parentId === containerId) { alert('不能将自己设为父容器'); return; }
+    // Check cycle: parent can't be a descendant of this container
+    const descIds = await getAllDescendantIds(containerId);
+    if (descIds.includes(parentId)) { alert('不能将子容器设为父容器（会造成循环）'); return; }
+    const target = await db.containers.get(parentId);
+    if (!target) { alert('未找到该容器'); return; }
+    await db.containers.update(containerId, { parentId: parentId });
+    navigate('container-detail', { containerId: containerId });
+  }, 'container');
+}
+
+// 扫描添加物品 — 扫描物品条码，将其移入本容器
+function startContainerItemScan(containerId) {
+  showScanner(async (text) => {
+    var itemId = '';
+    const parts = text.split(':');
+    if (parts.length >= 3 && parts[0] === 'wuju' && parts[1] === 'item') {
+      itemId = parts.slice(2).join(':');
+    } else {
+      const item = await db.items.filter(i => i.qrCode === text).first();
+      if (!item) { alert('未识别到物品条码/二维码'); return; }
+      itemId = item.id;
+    }
+    const item = await db.items.get(itemId);
+    if (!item) { alert('未找到该物品'); return; }
+    if (item.containerId === containerId) { alert('该物品已在此容器中'); return; }
+    await db.items.update(itemId, { containerId: containerId });
+    navigate('container-detail', { containerId: containerId });
+  }, 'auto');
 }
 
 // ── Initialize ──

@@ -7,17 +7,17 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="物居">
   <meta name="theme-color" content="#5B8FF9">
-  <link rel="manifest" href="/wuju-pwa/manifest.json">
+  <link rel="manifest" href="/wuju-pwa/manifest.json?v=10">
   <link rel="icon" href="/wuju-pwa/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/wuju-pwa/icons/icon-512.png">
-  <link rel="stylesheet" href="/wuju-pwa/css/style.css">
+  <link rel="stylesheet" href="/wuju-pwa/css/style.css?v=19">
   <title>物居</title>
 </head>
 <body>
   <div id="app">
     <div id="header">
       <button class="back">‹ 返回</button>
-      <span class="title">物居</span>
+      <span class="title">物居 <span style="font-size:11px;color:var(--text-tertiary);font-weight:400">v17</span></span>
       <span class="action"></span>
     </div>
     <div id="content">
@@ -48,7 +48,7 @@
     function _status(msg) { if(_loadStatus) _loadStatus.textContent = msg; }
     _status('正在加载资源…');
   </script>
-  <script src="/wuju-pwa/js/dexie.min.js?v=8"></script>
+  <script src="/wuju-pwa/js/dexie.min.js?v=9"></script>
   <script src="/wuju-pwa/js/qrcode.min.js?v=1"></script>
   <script src="/wuju-pwa/js/html5-qrcode.min.js?v=1"></script>
   <script>
@@ -58,7 +58,7 @@
       _status('✅ Dexie 就绪，初始化数据库…');
     }
   </script>
-  <script src="/wuju-pwa/js/db.js?v=8"></script>
-  <script src="/wuju-pwa/js/app.js?v=8"></script>
+  <script src="/wuju-pwa/js/db.js?v=11"></script>
+  <script src="/wuju-pwa/js/app.js?v=19"></script>
 </body>
 </html>

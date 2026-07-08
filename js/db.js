@@ -30,6 +30,20 @@ db.version(2).stores({
   });
 });
 
+db.version(3).stores({
+  containers: 'id, name, parentId, sortOrder',
+  items: 'id, name, category, containerId, expiryDate, addedDate',
+  relations: 'id, sourceId, targetId, relationType'
+}).upgrade(tx => {
+  return tx.table('items').toCollection().modify(item => {
+    if (!item.qrCode) item.qrCode = '';
+  }).then(() => {
+    return tx.table('containers').toCollection().modify(c => {
+      if (!c.qrCode) c.qrCode = '';
+    });
+  });
+});
+
 // ── Container helpers ──
 async function getRootContainers() {
   return db.containers.where('parentId').equals('').toArray()
