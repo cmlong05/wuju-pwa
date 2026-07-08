@@ -122,7 +122,7 @@ async function render() {
   header.className = '';
 
   if (state.screen === 'tabs') {
-    titleEl.innerHTML = '物居 <span style="font-size:11px;color:var(--text-tertiary);font-weight:400">v19</span>';
+    titleEl.innerHTML = '物居 <span style="font-size:11px;color:var(--text-tertiary);font-weight:400">v21</span>';
     updateTabBar();
     // Set action button based on tab
     actionBtn.style.display = (state.tab === 'alerts' || state.tab === 'scan') ? 'none' : 'block';
@@ -1106,11 +1106,12 @@ async function startHtml5Scanner(onScan, overlay) {
 
   try {
     _html5QrScanner = new Html5Qrcode('qr-reader');
-    // KEY: lower camera resolution to VGA (640x480) for 4-8x faster JS processing
-    // and reduce fps to 7 to avoid frame queue backup
+    // Use simple constraints — detailed width/height can cause iOS Safari to reject
+    // without showing permission prompt. Native BarcodeDetector path uses detailed
+    // constraints for speed; html5-qrcode fallback stays simple for compatibility.
     await _html5QrScanner.start(
-      { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
-      { fps: 7, qrbox: { width: 300, height: 200 } },
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 300, height: 200 } },
       (decodedText) => {
         stopScanner();
         overlay.remove();
@@ -1120,10 +1121,23 @@ async function startHtml5Scanner(onScan, overlay) {
     );
   } catch (e) {
     if (area) {
+      var errName = (e && e.name) || '';
+      var errMsg = (e && e.message) || String(e);
+      var tip = '';
+      if (errName === 'NotAllowedError' || /permission|not\s*allowed/i.test(errMsg)) {
+        tip = '<div style="font-size:14px;color:#ffcc00;margin:8px 0">📵 摄像头权限被拒绝</div>' +
+          '<div style="font-size:13px;color:#aaa;line-height:1.6">请在手机<b>设置 → Safari → 相机</b>中<br>改为「允许」后刷新重试</div>';
+      } else if (errName === 'NotFoundError' || /not\s*found/i.test(errMsg)) {
+        tip = '<div style="font-size:14px;color:#ffcc00;margin:8px 0">📷 未检测到摄像头</div>' +
+          '<div style="font-size:13px;color:#aaa;line-height:1.6">设备可能没有后置摄像头<br>请用下方按钮从相册选择图片</div>';
+      } else {
+        tip = '<div style="font-size:13px;color:#aaa;line-height:1.6">请点击下方按钮<br>从相册选择条码/二维码图片</div>' +
+          '<div style="font-size:11px;color:#666;margin-top:8px">错误: ' + htmlEscape(errMsg.substring(0, 80)) + '</div>';
+      }
       area.innerHTML = '<div style="color:#fff;text-align:center;padding:30px">' +
         '<div style="font-size:48px;margin-bottom:12px">📱</div>' +
         '<div style="font-size:16px;margin-bottom:8px">无法启动摄像头</div>' +
-        '<div style="font-size:13px;color:#aaa;line-height:1.6">请点击下方按钮<br>从相册选择条码/二维码图片</div>' +
+        tip +
         '</div>';
     }
   }
