@@ -1,4 +1,4 @@
-const CACHE = 'wuju-v8';
+const CACHE = 'wuju-v9';
 const PRECACHE = [
   '/wuju-pwa/',
   '/wuju-pwa/index.html',
