@@ -1,12 +1,27 @@
 /* ── 物居 PWA — Main Application ── */
 
-// ── Constants ──
-const CATEGORIES = ['食品', '药品', '衣物', '工具', '电子', '文具', '清洁', '装饰', '其他'];
+// ── Dynamic Categories (loaded from IndexedDB) ──
+let _categories = [];
+let _catIcons = {};
 
-const CAT_ICONS = {
-  '食品': '🍎', '药品': '💊', '衣物': '👕', '工具': '🔧',
-  '电子': '📺', '文具': '✏️', '清洁': '🧹', '装饰': '🎨', '其他': '📦'
-};
+async function loadCategories() {
+  try {
+    _categories = await getCategories();
+    _catIcons = {};
+    _categories.forEach(c => { _catIcons[c.name] = c.icon; });
+  } catch (e) {
+    // Fallback to defaults if DB fails
+    _categories = [
+      { name: '食品', icon: '🍎' }, { name: '药品', icon: '💊' },
+      { name: '衣物', icon: '👕' }, { name: '工具', icon: '🔧' },
+      { name: '电子', icon: '📺' }, { name: '文具', icon: '✏️' },
+      { name: '清洁', icon: '🧹' }, { name: '装饰', icon: '🎨' },
+      { name: '其他', icon: '📦' },
+    ];
+    _catIcons = {};
+    _categories.forEach(c => { _catIcons[c.name] = c.icon; });
+  }
+}
 
 const RELATION_TYPES = ['属于', '搭配', '替换', '备用'];
 
@@ -122,7 +137,7 @@ async function render() {
   header.className = '';
 
   if (state.screen === 'tabs') {
-    titleEl.innerHTML = '物居 <span style="font-size:11px;color:var(--text-tertiary);font-weight:400">v21</span>';
+    titleEl.innerHTML = '物居 <span style="font-size:11px;color:var(--text-tertiary);font-weight:400">v22</span>';
     updateTabBar();
     // Set action button based on tab
     actionBtn.style.display = (state.tab === 'alerts' || state.tab === 'scan') ? 'none' : 'block';
@@ -200,12 +215,17 @@ async function renderItemList(container) {
     className: 'chip' + (category === null ? ' selected' : ''),
     onclick: () => { state.itemCategory = null; render(); }
   }, '全部'));
-  CATEGORIES.forEach(cat => {
+  _categories.forEach(c => {
     chipRow.appendChild(h('button', {
-      className: 'chip' + (category === cat ? ' selected' : ''),
-      onclick: () => { state.itemCategory = (category === cat ? null : cat); render(); }
-    }, CAT_ICONS[cat] + ' ' + cat));
+      className: 'chip' + (category === c.name ? ' selected' : ''),
+      onclick: () => { state.itemCategory = (category === c.name ? null : c.name); render(); }
+    }, c.icon + ' ' + c.name));
   });
+  chipRow.appendChild(h('button', {
+    className: 'chip chip-manage',
+    onclick: () => showCategoryManager(),
+    style: 'font-size:14px'
+  }, '✏️'));
   container.appendChild(chipRow);
 
   // Sort segment
@@ -241,7 +261,7 @@ async function renderItemRows() {
   const list = h('div', { className: 'card-row-group' });
   items.forEach(item => {
     const row = h('div', { className: 'card-row item-row', onclick: () => navigate('item-detail', { itemId: item.id }) }, [
-      h('span', { className: 'cat-icon' }, CAT_ICONS[item.category] || '📦'),
+      h('span', { className: 'cat-icon' }, _catIcons[item.category] || '📦'),
       h('div', { className: 'info' }, [
         h('div', { className: 'name' }, item.name),
         item.containerId ? h('div', { className: 'sub' }, '') : ''
@@ -408,7 +428,7 @@ async function renderItemDetail(container, itemId) {
 
   // Header
   wrapper.appendChild(h('div', { className: 'detail-header' }, [
-    h('div', { className: 'cat-icon' }, CAT_ICONS[item.category] || '📦'),
+    h('div', { className: 'cat-icon' }, _catIcons[item.category] || '📦'),
     h('div', {}, [
       h('div', { className: 'title' }, item.name),
       h('div', { className: 'meta' }, [
@@ -542,9 +562,9 @@ async function renderItemEdit(container, itemId) {
 
   // Category
   const catSelect = h('select', { id: 'edit-category' });
-  CATEGORIES.forEach(cat => {
-    catSelect.appendChild(h('option', { value: cat, selected: item?.category === cat || (!item && cat === '其他') ? 'selected' : undefined },
-      CAT_ICONS[cat] + ' ' + cat));
+  _categories.forEach(c => {
+    catSelect.appendChild(h('option', { value: c.name, selected: item?.category === c.name || (!item && c.name === '其他') ? 'selected' : undefined },
+      c.icon + ' ' + c.name));
   });
   form.appendChild(formGroup('分类', catSelect));
 
@@ -660,7 +680,7 @@ async function renderContainerDetail(container, containerId) {
   if (items.length > 0) {
     const itemRows = items.map(item =>
       h('div', { className: 'detail-row', onclick: () => navigate('item-detail', { itemId: item.id }), style: 'cursor:pointer' }, [
-        h('span', { style: 'margin-right:8px' }, CAT_ICONS[item.category] || '📦'),
+        h('span', { style: 'margin-right:8px' }, _catIcons[item.category] || '📦'),
         h('span', { style: 'flex:1;font-weight:500' }, item.name),
         item.quantity != null ? h('span', { style: 'color:var(--text-secondary);font-size:13px' }, '×' + item.quantity) : '',
         h('span', { className: 'chevron' }, '›')
@@ -926,6 +946,113 @@ function showDeleteDialog(type, name, onConfirm) {
     ])
   ]);
   document.body.appendChild(overlay);
+}
+
+// ── Category Manager ──
+const EMOJI_POOL = ['🍎','🍞','🥩','🥬','🍺','💊','👕','👟','🔧','📺','✏️','🧹','🎨','📦','🏠','📚','💄','🧸','🐱','🚗','💻','🎮','🎵','⚽','🌿','🔋','📷','⌚','💡','🧴'];
+
+function showCategoryManager() {
+  var overlay = h('div', { className: 'overlay', onclick: function(e) { if (e.target === overlay) overlay.remove(); } }, [
+    h('div', { className: 'dialog', style: 'max-width:360px;max-height:80vh;overflow-y:auto' }, [
+      h('div', { style: 'font-weight:600;font-size:17px;margin-bottom:16px;text-align:center' }, '管理分类'),
+      h('div', { id: 'cat-list' }),
+      h('div', { id: 'cat-add-form', style: 'margin-top:12px;border-top:1px solid var(--separator);padding-top:12px' }, [
+        h('div', { style: 'font-weight:500;font-size:14px;margin-bottom:8px' }, '添加新分类'),
+        h('div', { style: 'display:flex;gap:8px;align-items:center' }, [
+          h('input', { type: 'text', id: 'cat-new-name', placeholder: '分类名称', style: 'flex:1;padding:10px;border:1px solid var(--separator);border-radius:8px;font-size:15px' }),
+          h('button', {
+            style: 'padding:10px 16px;border-radius:8px;border:none;background:var(--tint);color:#fff;font-size:15px;cursor:pointer;white-space:nowrap',
+            onclick: async function() {
+              var name = document.getElementById('cat-new-name').value.trim();
+              if (!name) return;
+              await addCategory(name, '📦');
+              await loadCategories();
+              renderCatList();
+              document.getElementById('cat-new-name').value = '';
+            }
+          }, '添加')
+        ])
+      ]),
+      h('div', { style: 'margin-top:12px;text-align:center' }, [
+        h('button', {
+          style: 'padding:10px 24px;border-radius:8px;border:none;background:#E5E5EA;cursor:pointer;font-size:15px',
+          onclick: async function() { overlay.remove(); await loadCategories(); render(); }
+        }, '完成')
+      ])
+    ])
+  ]);
+
+  function renderCatList() {
+    var list = document.getElementById('cat-list');
+    if (!list) return;
+    list.innerHTML = '';
+    _categories.forEach(function(c) {
+      var row = h('div', {
+        style: 'display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--separator);gap:8px'
+      }, [
+        h('span', { style: 'font-size:20px;min-width:28px;text-align:center' }, c.icon),
+        h('span', { style: 'flex:1;font-size:15px' }, c.name),
+        h('button', {
+          style: 'background:none;border:none;color:var(--tint);cursor:pointer;font-size:14px;padding:4px 8px',
+          onclick: function() { startEditCat(c, row); }
+        }, '✏️'),
+        h('button', {
+          style: 'background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:4px 8px',
+          onclick: async function() {
+            var ok = await deleteCategory(c.id);
+            if (ok === false) { alert('分类「' + c.name + '」正在被物品使用，无法删除'); return; }
+            await loadCategories();
+            renderCatList();
+          }
+        }, '✕')
+      ]);
+      list.appendChild(row);
+    });
+  }
+
+  function startEditCat(c, row) {
+    row.innerHTML = '';
+    var input = h('input', { type: 'text', value: c.name, style: 'flex:1;padding:8px;border:1px solid var(--tint);border-radius:8px;font-size:15px' });
+
+    // Emoji picker grid
+    var emojiGrid = h('div', { style: 'display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:8px' });
+    EMOJI_POOL.forEach(function(emoji) {
+      var borderStyle = emoji === c.icon ? '2px solid var(--tint)' : '1px solid var(--separator)';
+      var btn = h('button', {
+        style: 'border:' + borderStyle + ';background:white;border-radius:8px;padding:6px;font-size:18px;cursor:pointer',
+        onclick: function() { c.icon = emoji; emojiGrid.querySelectorAll('button').forEach(function(b) { b.style.border = '1px solid var(--separator)'; }); btn.style.border = '2px solid var(--tint)'; }
+      }, emoji);
+      emojiGrid.appendChild(btn);
+    });
+
+    var saveBtn = h('button', {
+      style: 'margin-top:8px;padding:8px 16px;border-radius:8px;border:none;background:var(--tint);color:#fff;font-size:14px;cursor:pointer',
+      onclick: async function() {
+        var newName = input.value.trim();
+        if (!newName) return;
+        await updateCategory(c.id, newName, c.icon);
+        await loadCategories();
+        renderCatList();
+      }
+    }, '保存');
+
+    var cancelBtn = h('button', {
+      style: 'margin-top:8px;margin-left:8px;padding:8px 16px;border-radius:8px;border:none;background:#E5E5EA;font-size:14px;cursor:pointer',
+      onclick: function() { renderCatList(); }
+    }, '取消');
+
+    row.appendChild(h('div', { style: 'flex:1' }, [
+      h('div', { style: 'display:flex;gap:4px;align-items:center' }, [
+        h('span', { style: 'font-size:20px' }, c.icon),
+        input
+      ]),
+      emojiGrid,
+      h('div', {}, [saveBtn, cancelBtn])
+    ]));
+  }
+
+  document.body.appendChild(overlay);
+  renderCatList();
 }
 
 // ── QR/条码 Modal ──
@@ -1351,6 +1478,12 @@ function startContainerItemScan(containerId) {
 // ── Initialize ──
 async function init() {
   try {
+    // Load categories from DB (must happen before render)
+    try {
+      await loadCategories();
+    } catch (e) {
+      console.error('loadCategories failed:', e);
+    }
     // Register service worker
     if ('serviceWorker' in navigator) {
       try {

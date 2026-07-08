@@ -44,6 +44,68 @@ db.version(3).stores({
   });
 });
 
+db.version(4).stores({
+  containers: 'id, name, parentId, sortOrder',
+  items: 'id, name, category, containerId, expiryDate, addedDate',
+  relations: 'id, sourceId, targetId, relationType',
+  categories: 'id, name, sortOrder'
+});
+
+// ── Category helpers ──
+const DEFAULT_CATEGORIES = [
+  { name: '食品', icon: '🍎' },
+  { name: '药品', icon: '💊' },
+  { name: '衣物', icon: '👕' },
+  { name: '工具', icon: '🔧' },
+  { name: '电子', icon: '📺' },
+  { name: '文具', icon: '✏️' },
+  { name: '清洁', icon: '🧹' },
+  { name: '装饰', icon: '🎨' },
+  { name: '其他', icon: '📦' },
+];
+
+async function seedDefaultCategories() {
+  const count = await db.categories.count();
+  if (count > 0) return;
+  const now = Date.now();
+  await db.categories.bulkPut(
+    DEFAULT_CATEGORIES.map((c, i) => ({
+      id: uuid(), name: c.name, icon: c.icon, sortOrder: i, createdAt: now
+    }))
+  );
+}
+
+async function getCategories() {
+  const cats = await db.categories.orderBy('sortOrder').toArray();
+  if (cats.length === 0) {
+    // First run — seed defaults and return them
+    await seedDefaultCategories();
+    return db.categories.orderBy('sortOrder').toArray();
+  }
+  return cats;
+}
+
+async function addCategory(name, icon) {
+  const maxSort = await db.categories.count();
+  await db.categories.put({
+    id: uuid(), name, icon, sortOrder: maxSort, createdAt: Date.now()
+  });
+}
+
+async function updateCategory(id, name, icon) {
+  await db.categories.update(id, { name, icon });
+}
+
+async function deleteCategory(id) {
+  const cat = await db.categories.get(id);
+  if (!cat) return;
+  // Check if any items use this category
+  const used = await db.items.where('category').equals(cat.name).count();
+  if (used > 0) return false; // can't delete — items still use it
+  await db.categories.delete(id);
+  return true;
+}
+
 // ── Container helpers ──
 async function getRootContainers() {
   return db.containers.where('parentId').equals('').toArray()
