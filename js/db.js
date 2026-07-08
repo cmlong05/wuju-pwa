@@ -51,6 +51,18 @@ db.version(4).stores({
   categories: 'id, name, sortOrder'
 });
 
+db.version(5).stores({
+  containers: 'id, name, parentId, sortOrder',
+  items: 'id, name, category, containerId, expiryDate, addedDate',
+  relations: 'id, sourceId, targetId, relationType',
+  categories: 'id, name, sortOrder',
+  tags: 'id, name, sortOrder'
+}).upgrade(tx => {
+  return tx.table('items').toCollection().modify(item => {
+    if (!item.tags) item.tags = [];
+  });
+});
+
 // ── Category helpers ──
 const DEFAULT_CATEGORIES = [
   { name: '食品', icon: '🍎' },
@@ -103,6 +115,57 @@ async function deleteCategory(id) {
   const used = await db.items.where('category').equals(cat.name).count();
   if (used > 0) return false; // can't delete — items still use it
   await db.categories.delete(id);
+  return true;
+}
+
+// ── Tag helpers ──
+const DEFAULT_TAGS = [
+  { name: '冷藏', icon: '❄️' },
+  { name: '冷冻', icon: '🧊' },
+  { name: '干货', icon: '🥜' },
+  { name: '易碎', icon: '💎' },
+  { name: '常用', icon: '⭐' },
+  { name: '有机', icon: '🌿' },
+];
+
+async function seedDefaultTags() {
+  const count = await db.tags.count();
+  if (count > 0) return;
+  const now = Date.now();
+  await db.tags.bulkPut(
+    DEFAULT_TAGS.map((t, i) => ({
+      id: uuid(), name: t.name, icon: t.icon, sortOrder: i, createdAt: now
+    }))
+  );
+}
+
+async function getTags() {
+  const tags = await db.tags.orderBy('sortOrder').toArray();
+  if (tags.length === 0) {
+    await seedDefaultTags();
+    return db.tags.orderBy('sortOrder').toArray();
+  }
+  return tags;
+}
+
+async function addTag(name, icon) {
+  const maxSort = await db.tags.count();
+  await db.tags.put({
+    id: uuid(), name, icon, sortOrder: maxSort, createdAt: Date.now()
+  });
+}
+
+async function updateTag(id, name, icon) {
+  await db.tags.update(id, { name, icon });
+}
+
+async function deleteTag(id) {
+  const tag = await db.tags.get(id);
+  if (!tag) return;
+  const tagName = tag.name;
+  const used = await db.items.filter(i => i.tags && i.tags.includes(tagName)).count();
+  if (used > 0) return false;
+  await db.tags.delete(id);
   return true;
 }
 
@@ -254,12 +317,12 @@ async function seedSampleData() {
   const sofaId = uuid();
 
   await db.items.bulkPut([
-    { id: eggId, name: '鸡蛋', quantity: 8, category: '食品', expiryDate: now + 7 * day, addedDate: now, notes: '', containerId: coldId },
-    { id: milkId, name: '牛奶', quantity: 1, category: '食品', expiryDate: now + 2 * day, addedDate: now, notes: '', containerId: coldId },
-    { id: yogurtId, name: '酸奶', quantity: 3, category: '食品', expiryDate: now - 1 * day, addedDate: now, notes: '', containerId: coldId },
-    { id: dumplingId, name: '速冻水饺', quantity: 2, category: '食品', expiryDate: now + 60 * day, addedDate: now, notes: '', containerId: freezerId },
-    { id: riceId, name: '大米', quantity: 1, category: '食品', expiryDate: null, addedDate: now, notes: '', containerId: cabinetId },
-    { id: saltId, name: '盐', quantity: 1, category: '食品', expiryDate: null, addedDate: now, notes: '', containerId: cabinetId },
+    { id: eggId, name: '鸡蛋', quantity: 8, category: '食品', tags: ['冷藏', '常用'], expiryDate: now + 7 * day, addedDate: now, notes: '', containerId: coldId },
+    { id: milkId, name: '牛奶', quantity: 1, category: '食品', tags: ['冷藏', '易碎'], expiryDate: now + 2 * day, addedDate: now, notes: '', containerId: coldId },
+    { id: yogurtId, name: '酸奶', quantity: 3, category: '食品', tags: ['冷藏'], expiryDate: now - 1 * day, addedDate: now, notes: '', containerId: coldId },
+    { id: dumplingId, name: '速冻水饺', quantity: 2, category: '食品', tags: ['冷冻', '常用'], expiryDate: now + 60 * day, addedDate: now, notes: '', containerId: freezerId },
+    { id: riceId, name: '大米', quantity: 1, category: '食品', tags: ['干货'], expiryDate: null, addedDate: now, notes: '', containerId: cabinetId },
+    { id: saltId, name: '盐', quantity: 1, category: '食品', tags: ['干货', '常用'], expiryDate: null, addedDate: now, notes: '', containerId: cabinetId },
     { id: medicineId, name: '感冒药', quantity: 1, category: '药品', expiryDate: now + 30 * day, addedDate: now, notes: '', containerId: '' },
     { id: shirtId, name: '白衬衫', quantity: 3, category: '衣物', expiryDate: null, addedDate: now, notes: '', containerId: wardrobeId },
     { id: tvId, name: '电视机', quantity: null, category: '电子', expiryDate: null, addedDate: now, notes: '', containerId: '' },

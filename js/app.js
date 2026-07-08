@@ -1,4 +1,10 @@
 /* ── 物居 PWA — Main Application ── */
+const APP_VERSION = 'v23';
+
+// ── Utilities ──
+function htmlEscape(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 // ── Dynamic Categories (loaded from IndexedDB) ──
 let _categories = [];
@@ -23,6 +29,26 @@ async function loadCategories() {
   }
 }
 
+// ── Dynamic Tags (loaded from IndexedDB) ──
+let _tags = [];
+let _tagIcons = {};
+
+async function loadTags() {
+  try {
+    _tags = await getTags();
+    _tagIcons = {};
+    _tags.forEach(t => { _tagIcons[t.name] = t.icon; });
+  } catch (e) {
+    _tags = [
+      { name: '冷藏', icon: '❄️' }, { name: '冷冻', icon: '🧊' },
+      { name: '干货', icon: '🥜' }, { name: '易碎', icon: '💎' },
+      { name: '常用', icon: '⭐' }, { name: '有机', icon: '🌿' },
+    ];
+    _tagIcons = {};
+    _tags.forEach(t => { _tagIcons[t.name] = t.icon; });
+  }
+}
+
 const RELATION_TYPES = ['属于', '搭配', '替换', '备用'];
 
 const CONTAINER_ICONS = ['🏠','🍽️','❄️','🗄️','👕','📚','🔨','💊','📁','📦','🧳','🧊'];
@@ -44,6 +70,7 @@ const state = {
   // Item list filters
   itemSearch: '',
   itemCategory: null,
+  itemTags: new Set(),
   itemSort: 'name',
 
   // Expand state for container tree
@@ -137,7 +164,7 @@ async function render() {
   header.className = '';
 
   if (state.screen === 'tabs') {
-    titleEl.innerHTML = '物居 <span style="font-size:11px;color:var(--text-tertiary);font-weight:400">v22</span>';
+    titleEl.innerHTML = '物居 <span style="font-size:11px;color:var(--text-tertiary);font-weight:400">' + APP_VERSION + '</span>';
     updateTabBar();
     // Set action button based on tab
     actionBtn.style.display = (state.tab === 'alerts' || state.tab === 'scan') ? 'none' : 'block';
@@ -228,6 +255,28 @@ async function renderItemList(container) {
   }, '✏️'));
   container.appendChild(chipRow);
 
+  // Tag chips (multi-select)
+  const tagRow = h('div', { className: 'chip-scroll', style: 'margin-top:4px' });
+  tagRow.appendChild(h('span', { style: 'font-size:11px;color:var(--text-tertiary);padding:6px 4px;white-space:nowrap' }, '标签:'));
+  _tags.forEach(t => {
+    const selected = state.itemTags.has(t.name);
+    tagRow.appendChild(h('button', {
+      className: 'chip' + (selected ? ' selected' : ''),
+      style: selected ? '' : 'opacity:0.65',
+      onclick: () => {
+        if (selected) state.itemTags.delete(t.name);
+        else state.itemTags.add(t.name);
+        render();
+      }
+    }, t.icon + ' ' + t.name));
+  });
+  tagRow.appendChild(h('button', {
+    className: 'chip chip-manage',
+    onclick: () => showTagManager(),
+    style: 'font-size:14px'
+  }, '✏️'));
+  container.appendChild(tagRow);
+
   // Sort segment
   const seg = h('div', { className: 'segment' });
   ['name', 'date', 'expiry'].forEach(s => {
@@ -248,9 +297,11 @@ async function renderItemRows() {
 
   const search = state.itemSearch;
   const category = state.itemCategory;
+  const selectedTags = [...state.itemTags];
 
   let items = await getItemsSorted(state.itemSort);
   if (category) items = items.filter(i => i.category === category);
+  if (selectedTags.length > 0) items = items.filter(i => i.tags && selectedTags.every(t => i.tags.includes(t)));
   if (search) items = items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
 
   if (items.length === 0) {
@@ -306,10 +357,8 @@ async function renderContainerTree(container) {
   }
 
   const list = h('div', { className: 'card-row-group' });
-  for (const root of roots) {
-    const nodes = await renderContainerNodes(root, 0);
-    nodes.forEach(n => list.appendChild(n));
-  }
+  const allNodeArrays = await Promise.all(roots.map(root => renderContainerNodes(root, 0)));
+  allNodeArrays.forEach(nodes => nodes.forEach(n => list.appendChild(n)));
   container.appendChild(list);
 }
 
@@ -434,7 +483,12 @@ async function renderItemDetail(container, itemId) {
       h('div', { className: 'meta' }, [
         h('span', { className: 'cat-tag' }, item.category),
         item.quantity != null ? h('span', { style: 'font-size:14px;color:var(--text-secondary)' }, '×' + item.quantity) : ''
-      ])
+      ]),
+      (item.tags && item.tags.length > 0)
+        ? h('div', { style: 'display:flex;flex-wrap:wrap;gap:4px;margin-top:6px' },
+            item.tags.map(t => h('span', { className: 'cat-tag', style: 'font-size:11px;padding:2px 8px' }, _tagIcons[t] ? _tagIcons[t] + ' ' + t : '🏷 ' + t))
+          )
+        : ''
     ])
   ]));
 
@@ -568,6 +622,25 @@ async function renderItemEdit(container, itemId) {
   });
   form.appendChild(formGroup('分类', catSelect));
 
+  // Tags (multi-select checkboxes)
+  const tagGrid = h('div', { id: 'edit-tags', style: 'display:flex;flex-wrap:wrap;gap:6px' });
+  const itemTags = item?.tags || [];
+  _tags.forEach(t => {
+    const checked = itemTags.includes(t.name);
+    const btn = h('button', {
+      type: 'button',
+      className: 'chip' + (checked ? ' selected' : ''),
+      style: (checked ? '' : 'opacity:0.5') + ';cursor:pointer',
+      onclick: function() {
+        var isSel = this.classList.contains('selected');
+        if (isSel) { this.classList.remove('selected'); this.style.opacity = '0.5'; }
+        else { this.classList.add('selected'); this.style.opacity = '1'; }
+      }
+    }, t.icon + ' ' + t.name);
+    tagGrid.appendChild(btn);
+  });
+  form.appendChild(formGroup('标签', tagGrid));
+
   // Expiry toggle
   const hasExpiry = !!item?.expiryDate;
   form.appendChild(toggleField('设置保质期', 'edit-has-expiry', hasExpiry, 'edit-expiry-row'));
@@ -605,6 +678,7 @@ async function renderItemEdit(container, itemId) {
       image: imageData,
       quantity: document.getElementById('edit-has-qty').classList.contains('on') ? parseInt($('#edit-qty').value) || null : null,
       category: $('#edit-category').value,
+      tags: [...document.querySelectorAll('#edit-tags .chip.selected')].map(b => b.textContent.replace(/^[^\s]*\s/, '')),
       expiryDate: document.getElementById('edit-has-expiry').classList.contains('on') ? new Date($('#edit-expiry').value).getTime() : null,
       containerId: $('#edit-container').value,
       notes: $('#edit-notes').value
@@ -663,15 +737,15 @@ async function renderContainerDetail(container, containerId) {
   children.sort((a, b) => a.sortOrder - b.sortOrder);
   if (children.length > 0) {
     const childRows = [];
-    for (const child of children) {
-      const total = await getContainerTotalItems(child.id);
+    const childTotals = await Promise.all(children.map(child => getContainerTotalItems(child.id)));
+    children.forEach((child, idx) => {
       childRows.push(h('div', { className: 'detail-row', onclick: () => navigate('container-detail', { containerId: child.id }), style: 'cursor:pointer' }, [
         h('span', { style: `color:${child.color};margin-right:8px` }, child.icon),
         h('span', { style: 'flex:1' }, child.name),
-        h('span', { style: 'color:var(--text-secondary);font-size:13px' }, total + ' 件'),
+        h('span', { style: 'color:var(--text-secondary);font-size:13px' }, childTotals[idx] + ' 件'),
         h('span', { className: 'chevron' }, '›')
       ]));
-    }
+    });
     wrapper.appendChild(sectionBlock('子容器', childRows));
   }
 
@@ -679,9 +753,13 @@ async function renderContainerDetail(container, containerId) {
   const items = await db.items.where('containerId').equals(containerId).toArray();
   if (items.length > 0) {
     const itemRows = items.map(item =>
-      h('div', { className: 'detail-row', onclick: () => navigate('item-detail', { itemId: item.id }), style: 'cursor:pointer' }, [
+      h('div', { className: 'detail-row', onclick: () => navigate('item-detail', { itemId: item.id }), style: 'cursor:pointer;flex-wrap:wrap;gap:4px' }, [
         h('span', { style: 'margin-right:8px' }, _catIcons[item.category] || '📦'),
         h('span', { style: 'flex:1;font-weight:500' }, item.name),
+        (item.tags && item.tags.length > 0)
+          ? h('span', { style: 'font-size:10px;color:var(--text-tertiary);margin-right:4px' },
+              item.tags.slice(0, 3).map(t => _tagIcons[t] || '').join(''))
+          : '',
         item.quantity != null ? h('span', { style: 'color:var(--text-secondary);font-size:13px' }, '×' + item.quantity) : '',
         h('span', { className: 'chevron' }, '›')
       ])
@@ -948,27 +1026,29 @@ function showDeleteDialog(type, name, onConfirm) {
   document.body.appendChild(overlay);
 }
 
-// ── Category Manager ──
+// ── Generic Entity Manager (Categories & Tags) ──
 const EMOJI_POOL = ['🍎','🍞','🥩','🥬','🍺','💊','👕','👟','🔧','📺','✏️','🧹','🎨','📦','🏠','📚','💄','🧸','🐱','🚗','💻','🎮','🎵','⚽','🌿','🔋','📷','⌚','💡','🧴'];
 
-function showCategoryManager() {
+function showEntityManager(config) {
+  var { title, listId, newNameId, items, addFn, deleteFn, updateFn, reloadFn, defaultIcon, itemLabel, completeFn } = config;
+
   var overlay = h('div', { className: 'overlay', onclick: function(e) { if (e.target === overlay) overlay.remove(); } }, [
     h('div', { className: 'dialog', style: 'max-width:360px;max-height:80vh;overflow-y:auto' }, [
-      h('div', { style: 'font-weight:600;font-size:17px;margin-bottom:16px;text-align:center' }, '管理分类'),
-      h('div', { id: 'cat-list' }),
-      h('div', { id: 'cat-add-form', style: 'margin-top:12px;border-top:1px solid var(--separator);padding-top:12px' }, [
-        h('div', { style: 'font-weight:500;font-size:14px;margin-bottom:8px' }, '添加新分类'),
+      h('div', { style: 'font-weight:600;font-size:17px;margin-bottom:16px;text-align:center' }, title),
+      h('div', { id: listId }),
+      h('div', { style: 'margin-top:12px;border-top:1px solid var(--separator);padding-top:12px' }, [
+        h('div', { style: 'font-weight:500;font-size:14px;margin-bottom:8px' }, '添加新' + itemLabel),
         h('div', { style: 'display:flex;gap:8px;align-items:center' }, [
-          h('input', { type: 'text', id: 'cat-new-name', placeholder: '分类名称', style: 'flex:1;padding:10px;border:1px solid var(--separator);border-radius:8px;font-size:15px' }),
+          h('input', { type: 'text', id: newNameId, placeholder: itemLabel + '名称', style: 'flex:1;padding:10px;border:1px solid var(--separator);border-radius:8px;font-size:15px' }),
           h('button', {
             style: 'padding:10px 16px;border-radius:8px;border:none;background:var(--tint);color:#fff;font-size:15px;cursor:pointer;white-space:nowrap',
             onclick: async function() {
-              var name = document.getElementById('cat-new-name').value.trim();
+              var name = document.getElementById(newNameId).value.trim();
               if (!name) return;
-              await addCategory(name, '📦');
-              await loadCategories();
-              renderCatList();
-              document.getElementById('cat-new-name').value = '';
+              await addFn(name, defaultIcon);
+              await reloadFn();
+              renderList();
+              document.getElementById(newNameId).value = '';
             }
           }, '添加')
         ])
@@ -976,17 +1056,17 @@ function showCategoryManager() {
       h('div', { style: 'margin-top:12px;text-align:center' }, [
         h('button', {
           style: 'padding:10px 24px;border-radius:8px;border:none;background:#E5E5EA;cursor:pointer;font-size:15px',
-          onclick: async function() { overlay.remove(); await loadCategories(); render(); }
+          onclick: async function() { overlay.remove(); await reloadFn(); if (completeFn) await completeFn(); }
         }, '完成')
       ])
     ])
   ]);
 
-  function renderCatList() {
-    var list = document.getElementById('cat-list');
+  function renderList() {
+    var list = document.getElementById(listId);
     if (!list) return;
     list.innerHTML = '';
-    _categories.forEach(function(c) {
+    items.forEach(function(c) {
       var row = h('div', {
         style: 'display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--separator);gap:8px'
       }, [
@@ -994,15 +1074,15 @@ function showCategoryManager() {
         h('span', { style: 'flex:1;font-size:15px' }, c.name),
         h('button', {
           style: 'background:none;border:none;color:var(--tint);cursor:pointer;font-size:14px;padding:4px 8px',
-          onclick: function() { startEditCat(c, row); }
+          onclick: function() { startEdit(c, row); }
         }, '✏️'),
         h('button', {
           style: 'background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:4px 8px',
           onclick: async function() {
-            var ok = await deleteCategory(c.id);
-            if (ok === false) { alert('分类「' + c.name + '」正在被物品使用，无法删除'); return; }
-            await loadCategories();
-            renderCatList();
+            var ok = await deleteFn(c.id);
+            if (ok === false) { alert(itemLabel + '「' + c.name + '」正在被使用，无法删除'); return; }
+            await reloadFn();
+            renderList();
           }
         }, '✕')
       ]);
@@ -1010,11 +1090,10 @@ function showCategoryManager() {
     });
   }
 
-  function startEditCat(c, row) {
+  function startEdit(c, row) {
     row.innerHTML = '';
     var input = h('input', { type: 'text', value: c.name, style: 'flex:1;padding:8px;border:1px solid var(--tint);border-radius:8px;font-size:15px' });
 
-    // Emoji picker grid
     var emojiGrid = h('div', { style: 'display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:8px' });
     EMOJI_POOL.forEach(function(emoji) {
       var borderStyle = emoji === c.icon ? '2px solid var(--tint)' : '1px solid var(--separator)';
@@ -1030,15 +1109,15 @@ function showCategoryManager() {
       onclick: async function() {
         var newName = input.value.trim();
         if (!newName) return;
-        await updateCategory(c.id, newName, c.icon);
-        await loadCategories();
-        renderCatList();
+        await updateFn(c.id, newName, c.icon);
+        await reloadFn();
+        renderList();
       }
     }, '保存');
 
     var cancelBtn = h('button', {
       style: 'margin-top:8px;margin-left:8px;padding:8px 16px;border-radius:8px;border:none;background:#E5E5EA;font-size:14px;cursor:pointer',
-      onclick: function() { renderCatList(); }
+      onclick: function() { renderList(); }
     }, '取消');
 
     row.appendChild(h('div', { style: 'flex:1' }, [
@@ -1052,7 +1131,25 @@ function showCategoryManager() {
   }
 
   document.body.appendChild(overlay);
-  renderCatList();
+  renderList();
+}
+
+function showCategoryManager() {
+  showEntityManager({
+    title: '管理分类', listId: 'cat-list', newNameId: 'cat-new-name',
+    items: _categories, addFn: addCategory, deleteFn: deleteCategory,
+    updateFn: updateCategory, reloadFn: loadCategories,
+    defaultIcon: '📦', itemLabel: '分类', completeFn: render
+  });
+}
+
+function showTagManager() {
+  showEntityManager({
+    title: '管理标签', listId: 'tag-list', newNameId: 'tag-new-name',
+    items: _tags, addFn: addTag, deleteFn: deleteTag,
+    updateFn: updateTag, reloadFn: loadTags,
+    defaultIcon: '🏷', itemLabel: '标签', completeFn: render
+  });
 }
 
 // ── QR/条码 Modal ──
@@ -1483,6 +1580,12 @@ async function init() {
       await loadCategories();
     } catch (e) {
       console.error('loadCategories failed:', e);
+    }
+    // Load tags from DB
+    try {
+      await loadTags();
+    } catch (e) {
+      console.error('loadTags failed:', e);
     }
     // Register service worker
     if ('serviceWorker' in navigator) {
