@@ -1606,9 +1606,9 @@ async function showScanner(onScan, mode) {
     return;
   }
 
-  // Use jsQR Worker engine — BarcodeDetector API is unreliable on Safari
+  // Use jsQR engine — BarcodeDetector API is unreliable on Safari
   var sb = document.getElementById('qr-status');
-  if (sb) { sb.style.display = 'block'; sb.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#5ad8a6">⚡ jsQR 引擎 (Worker) — 请对准二维码</div>'; }
+  if (sb) { sb.style.display = 'block'; sb.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#5ad8a6">⚡ jsQR 引擎 — 请对准二维码</div>'; }
   startJsQRScanner(onScan, overlay);
 }
 
