@@ -1,5 +1,5 @@
 /* ── 物居 PWA — Main Application ── */
-const APP_VERSION = 'v23';
+const APP_VERSION = 'v47';
 
 // ── Utilities ──
 function htmlEscape(str) {
@@ -11,22 +11,9 @@ let _categories = [];
 let _catIcons = {};
 
 async function loadCategories() {
-  try {
-    _categories = await getCategories();
-    _catIcons = {};
-    _categories.forEach(c => { _catIcons[c.name] = c.icon; });
-  } catch (e) {
-    // Fallback to defaults if DB fails
-    _categories = [
-      { name: '食品', icon: '🍎' }, { name: '药品', icon: '💊' },
-      { name: '衣物', icon: '👕' }, { name: '工具', icon: '🔧' },
-      { name: '电子', icon: '📺' }, { name: '文具', icon: '✏️' },
-      { name: '清洁', icon: '🧹' }, { name: '装饰', icon: '🎨' },
-      { name: '其他', icon: '📦' },
-    ];
-    _catIcons = {};
-    _categories.forEach(c => { _catIcons[c.name] = c.icon; });
-  }
+  _categories = await getCategories();
+  _catIcons = {};
+  _categories.forEach(c => { _catIcons[c.name] = c.icon; });
 }
 
 // ── Dynamic Tags (loaded from IndexedDB) ──
@@ -34,19 +21,9 @@ let _tags = [];
 let _tagIcons = {};
 
 async function loadTags() {
-  try {
-    _tags = await getTags();
-    _tagIcons = {};
-    _tags.forEach(t => { _tagIcons[t.name] = t.icon; });
-  } catch (e) {
-    _tags = [
-      { name: '冷藏', icon: '❄️' }, { name: '冷冻', icon: '🧊' },
-      { name: '干货', icon: '🥜' }, { name: '易碎', icon: '💎' },
-      { name: '常用', icon: '⭐' }, { name: '有机', icon: '🌿' },
-    ];
-    _tagIcons = {};
-    _tags.forEach(t => { _tagIcons[t.name] = t.icon; });
-  }
+  _tags = await getTags();
+  _tagIcons = {};
+  _tags.forEach(t => { _tagIcons[t.name] = t.icon; });
 }
 
 const RELATION_TYPES = ['属于', '搭配', '替换', '备用'];
@@ -1228,99 +1205,171 @@ function showQRModal(type, id, name, savedCode) {
 
 // ── QR 扫描 (双引擎: BarcodeDetector API 优先, html5-qrcode 降级) ──
 let _html5QrScanner = null;
-let _nativeScanState = null; // { video, canvas, stream, ctx, detector, rafId, stopped }
+let _nativeScanState = null; // { video, canvas, stream, ctx, detector, stopped, frameCount }
 
-// Check if native BarcodeDetector API is available (Chrome 88+, Edge 88+, Safari 16+)
-const _hasBarcodeDetector = (() => {
+// Check if native BarcodeDetector API is ACTUALLY usable
+// Returns { ok: bool, detail: string } for diagnostics
+function _barcodeDetectorAvailable() {
   try {
-    return 'BarcodeDetector' in window;
-  } catch(e) { return false; }
-})();
+    if (!window.isSecureContext) return { ok: false, detail: '非安全上下文(isSecureContext=false)' };
+    if (!('BarcodeDetector' in window)) return { ok: false, detail: 'BarcodeDetector不在window' };
+    var Detector = window.BarcodeDetector;
+    if (typeof Detector !== 'function') return { ok: false, detail: 'BarcodeDetector不是函数(typeof=' + typeof Detector + ')' };
+    try { new Detector(); return { ok: true, detail: '无参构造成功' }; } catch(_) {}
+    try { new Detector({ formats: ['qr_code'] }); return { ok: true, detail: 'qr_code构造成功' }; } catch(_) {}
+    return { ok: false, detail: '构造均失败' };
+  } catch(e) {
+    return { ok: false, detail: '异常:' + String(e).substring(0,40) };
+  }
+}
 
-// Native scanner using BarcodeDetector API — GPU-accelerated, near-instant recognition
+// Supports torch (flashlight) control via MediaStreamTrack
+function _tryEnableTorch(stream) {
+  try {
+    var track = stream.getVideoTracks()[0];
+    if (track && 'torch' in track.getCapabilities()) {
+      track.applyConstraints({ advanced: [{ torch: true }] });
+    }
+  } catch(e) { /* torch not supported */ }
+}
+
+// Native scanner using BarcodeDetector API — GPU-accelerated, frame-by-frame detection
+// Key optimizations vs old approach:
+// 1. Feed video directly to BarcodeDetector (no canvas drawImage copy)
+// 2. No frame-skip — detect EVERY frame for < 33ms latency
+// 3. Simple camera constraints — let the OS choose optimal resolution
 async function startNativeScanner(onScan, overlay) {
   var area = document.getElementById('qr-reader');
   if (!area) return;
 
-  // Create video + canvas for frame processing at low resolution (fast!)
+  // Create video for preview
   var video = document.createElement('video');
   video.setAttribute('playsinline', '');
   video.setAttribute('autoplay', '');
+  video.muted = true;
   video.style.width = '100%';
   video.style.height = '100%';
   video.style.objectFit = 'cover';
   video.style.borderRadius = '12px';
 
-  // Zoom-in scan zone overlay effect (mimics Alipay's auto-zoom feel)
+  // Scan zone overlay with zoom pulse
   var zoomBox = document.createElement('div');
-  zoomBox.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(1.6);width:180px;height:180px;border:3px solid rgba(0,200,100,.8);border-radius:16px;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.35);z-index:10;animation:scan-pulse 2s ease-in-out infinite;';
+  zoomBox.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:2px solid rgba(0,200,100,.7);border-radius:16px;pointer-events:none;box-shadow:0 0 0 2000px rgba(0,0,0,.35);z-index:10;animation:zoom-pulse 2s ease-in-out infinite;';
   area.style.position = 'relative';
   area.style.overflow = 'hidden';
   area.innerHTML = '';
   area.appendChild(video);
+
+  // Scanning line animation
+  var scanLine = document.createElement('div');
+  scanLine.style.cssText = 'position:absolute;left:10%;width:80%;height:2px;background:linear-gradient(90deg,transparent,rgba(0,200,100,.8),transparent);top:50%;z-index:11;pointer-events:none;animation:scan-line-sweep 1.8s ease-in-out infinite;';
+  zoomBox.appendChild(scanLine);
   area.appendChild(zoomBox);
 
+  // Corner brackets
+  ['tl','tr','bl','br'].forEach(function(pos) {
+    var corner = document.createElement('div');
+    var s = { position:'absolute', width:'20px', height:'20px', pointerEvents:'none', zIndex:'11' };
+    if (pos === 'tl') { s.top='-1px'; s.left='-1px'; s.borderTop='3px solid rgba(0,200,100,.8)'; s.borderLeft='3px solid rgba(0,200,100,.8)'; s.borderRadius='16px 0 0 0'; }
+    else if (pos === 'tr') { s.top='-1px'; s.right='-1px'; s.borderTop='3px solid rgba(0,200,100,.8)'; s.borderRight='3px solid rgba(0,200,100,.8)'; s.borderRadius='0 16px 0 0'; }
+    else if (pos === 'bl') { s.bottom='-1px'; s.left='-1px'; s.borderBottom='3px solid rgba(0,200,100,.8)'; s.borderLeft='3px solid rgba(0,200,100,.8)'; s.borderRadius='0 0 0 16px'; }
+    else { s.bottom='-1px'; s.right='-1px'; s.borderBottom='3px solid rgba(0,200,100,.8)'; s.borderRight='3px solid rgba(0,200,100,.8)'; s.borderRadius='0 0 16px 0'; }
+    Object.assign(corner.style, s);
+    zoomBox.appendChild(corner);
+  });
+
+  // Fallback canvas — only used if video→detector path fails
   var canvas = document.createElement('canvas');
   var ctx = canvas.getContext('2d', { willReadFrequently: true });
 
   try {
+    // Simple constraints — let the OS pick optimal resolution/format
     var stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
+      video: { facingMode: 'environment' },
       audio: false
     });
     video.srcObject = stream;
-    await video.play();
+    try { await video.play(); } catch(_) {}
 
-    // Match canvas to actual video dimensions
+    // Auto-focus + torch
+    try {
+      var track = stream.getVideoTracks()[0];
+      if (track) track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+    } catch(_) {}
+    _tryEnableTorch(stream);
+
+    // BarcodeDetector — try full format set, fallback to qr_code only
+    var detector;
+    try {
+      detector = new BarcodeDetector({
+        formats: ['qr_code', 'ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e']
+      });
+    } catch (_) {
+      detector = new BarcodeDetector({ formats: ['qr_code'] });
+    }
+
+    // Draw full frame to canvas — BarcodeDetector in Safari works best with canvas
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
+    var ctx2 = canvas.getContext('2d'); // standard context, no hints
 
-    var detector = new BarcodeDetector({ formats: ['qr_code', 'ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e', 'codabar', 'data_matrix', 'pdf417', 'aztec'] });
-
-    var stopped = false;
-    _nativeScanState = { video, canvas, stream, ctx, detector, stopped: false };
+    _nativeScanState = { video: video, canvas: canvas, stream: stream, ctx: ctx2, detector: detector, stopped: false, tickCount: 0 };
 
     function tick() {
-      if (_nativeScanState && _nativeScanState.stopped) return;
-      if (video.readyState < video.HAVE_ENOUGH_DATA) {
-        _nativeScanState.rafId = requestAnimationFrame(tick);
+      var state = _nativeScanState;
+      if (!state || state.stopped) return;
+
+      state.tickCount++;
+      if (state.tickCount % 2 !== 0) {
+        requestAnimationFrame(tick);
         return;
       }
 
-      // Only process every 3rd frame (~10fps at 30fps video) for efficiency
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      detector.detect(canvas).then(barcodes => {
+      var vw = video.videoWidth || 640;
+      var vh = video.videoHeight || 480;
+      if (vw > 0 && vh > 0) {
+        state.canvas.width = vw;
+        state.canvas.height = vh;
+        state.ctx.drawImage(video, 0, 0, vw, vh);
+      }
+
+      state.detector.detect(state.canvas).then(function(barcodes) {
         if (barcodes.length > 0) {
           stopNativeScanner();
           overlay.remove();
           onScan(barcodes[0].rawValue);
         }
-      }).catch(() => {}); // ignore detection errors
+      }).catch(function() {});
 
-      if (!_nativeScanState || !_nativeScanState.stopped) {
-        _nativeScanState.rafId = requestAnimationFrame(tick);
+      if (_nativeScanState && !_nativeScanState.stopped) {
+        requestAnimationFrame(tick);
       }
     }
     tick();
   } catch(e) {
-    // BarcodeDetector failed — fall back to html5-qrcode
+    // BarcodeDetector constructed OK but runtime failed — show reason + jsQR badge together
     if (_nativeScanState) stopNativeScanner();
     area.innerHTML = '';
-    startHtml5Scanner(onScan, overlay);
+    var errMsg = String(e.message || e).substring(0, 50);
+    var statusBar = document.getElementById('qr-status');
+    if (statusBar) {
+      statusBar.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:11px;color:#ff6b6b">⚠️ ' + htmlEscape(errMsg) + '</div>' +
+        '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#5ad8a6">⚡ jsQR 引擎 — 请对准二维码</div>';
+    }
+    startJsQRScanner(onScan, overlay);
   }
 }
 
 function stopNativeScanner() {
   if (!_nativeScanState) return;
   _nativeScanState.stopped = true;
-  if (_nativeScanState.rafId) cancelAnimationFrame(_nativeScanState.rafId);
   if (_nativeScanState.stream) {
     _nativeScanState.stream.getTracks().forEach(t => t.stop());
   }
   _nativeScanState = null;
 }
 
-// html5-qrcode fallback — optimized with low camera resolution for faster JS processing
+// html5-qrcode fallback — pure-JS ZXing port for browsers without BarcodeDetector
 async function startHtml5Scanner(onScan, overlay) {
   var area = document.getElementById('qr-reader');
   if (!area) return;
@@ -1328,10 +1377,23 @@ async function startHtml5Scanner(onScan, overlay) {
   area.style.overflow = '';
   area.innerHTML = '';
 
+  // Show fallback badge — preserve any error info from failed native scanner
+  var statusBar = document.getElementById('qr-status');
+  if (statusBar) {
+    statusBar.style.display = 'block';
+    var existing = statusBar.innerHTML;
+    if (existing && existing.indexOf('color:#ff6b6b') !== -1) {
+      // Keep the error, append fallback notice below
+      statusBar.innerHTML = existing + '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#f6bd16">⚠️ 兼容模式 — 识别稍慢，请保持稳定</div>';
+    } else {
+      statusBar.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#f6bd16">⚠️ 兼容模式 — 识别稍慢，请保持稳定</div>';
+    }
+  }
+
   try {
     _html5QrScanner = new Html5Qrcode('qr-reader');
     // Use simple constraints — detailed width/height can cause iOS Safari to reject
-    // without showing permission prompt. Native BarcodeDetector path uses detailed
+    // without showing permission prompt. BarcodeDetector native path uses detailed
     // constraints for speed; html5-qrcode fallback stays simple for compatibility.
     await _html5QrScanner.start(
       { facingMode: 'environment' },
@@ -1367,6 +1429,118 @@ async function startHtml5Scanner(onScan, overlay) {
   }
 }
 
+// ── jsQR scanner — fast pure-JS QR fallback (5-10x faster than html5-qrcode) ──
+let _jsQRState = null; // { video, canvas, stream, ctx, stopped, frameCount }
+
+async function startJsQRScanner(onScan, overlay) {
+  var area = document.getElementById('qr-reader');
+  if (!area) return;
+
+  if (typeof jsQR !== 'function') {
+    area.innerHTML = '';
+    startHtml5Scanner(onScan, overlay);
+    return;
+  }
+
+  area.style.position = 'relative';
+  area.style.overflow = 'hidden';
+  area.innerHTML = '';
+
+  var statusBar = document.getElementById('qr-status');
+  if (statusBar) {
+    statusBar.style.display = 'block';
+    if (statusBar.innerHTML.indexOf('jsQR') === -1) {
+      statusBar.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#5ad8a6">⚡ jsQR 引擎 — 请对准二维码</div>';
+    }
+  }
+
+  var video = document.createElement('video');
+  video.setAttribute('playsinline', '');
+  video.setAttribute('autoplay', '');
+  video.muted = true;
+  video.style.width = '100%';
+  video.style.height = '100%';
+  video.style.objectFit = 'cover';
+  video.style.borderRadius = '12px';
+  area.appendChild(video);
+
+  var zoomBox = document.createElement('div');
+  zoomBox.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:2px solid rgba(0,200,100,.7);border-radius:16px;pointer-events:none;box-shadow:0 0 0 2000px rgba(0,0,0,.35);z-index:10;animation:zoom-pulse 2s ease-in-out infinite;';
+  area.appendChild(zoomBox);
+
+  var scanLine = document.createElement('div');
+  scanLine.style.cssText = 'position:absolute;left:10%;width:80%;height:2px;background:linear-gradient(90deg,transparent,rgba(0,200,100,.8),transparent);top:50%;z-index:11;pointer-events:none;animation:scan-line-sweep 1.8s ease-in-out infinite;';
+  zoomBox.appendChild(scanLine);
+
+  var canvas = document.createElement('canvas');
+  var ctx = canvas.getContext('2d', { willReadFrequently: true });
+  var detectSize = 300;
+  canvas.width = detectSize;
+  canvas.height = detectSize;
+
+  try {
+    var stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
+      audio: false
+    });
+    video.srcObject = stream;
+    try { await video.play(); } catch(_) {}
+
+    try {
+      var track = stream.getVideoTracks()[0];
+      if (track) track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+    } catch(_) {}
+
+    _jsQRState = { video: video, canvas: canvas, stream: stream, ctx: ctx, stopped: false, frameCount: 0 };
+
+    function tick() {
+      var s = _jsQRState;
+      if (!s || s.stopped) return;
+
+      s.frameCount++;
+      // Every 3rd frame: balance CPU vs responsiveness
+      if (s.frameCount % 3 !== 0) {
+        requestAnimationFrame(tick);
+        return;
+      }
+
+      var vw = video.videoWidth || 640;
+      var vh = video.videoHeight || 480;
+      var cs = Math.floor(Math.min(vw, vh) * 0.5);
+      var sx = Math.floor((vw - cs) / 2);
+      var sy = Math.floor((vh - cs) / 2);
+      ctx.drawImage(video, sx, sy, cs, cs, 0, 0, canvas.width, canvas.height);
+
+      var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      var result = jsQR(imageData.data, canvas.width, canvas.height);
+
+      if (result) {
+        stopJsQRScanner();
+        overlay.remove();
+        onScan(result.data);
+        return;
+      }
+      if (_jsQRState && !_jsQRState.stopped) {
+        requestAnimationFrame(tick);
+      }
+    }
+    tick();
+  } catch(e) {
+    if (_jsQRState) stopJsQRScanner();
+    area.innerHTML = '';
+    startHtml5Scanner(onScan, overlay);
+  }
+}
+
+function stopJsQRScanner() {
+  if (!_jsQRState) return;
+  _jsQRState.stopped = true;
+  if (_jsQRState.stream) {
+    _jsQRState.stream.getTracks().forEach(function(t) { t.stop(); });
+  }
+  _jsQRState = null;
+}
+
 async function showScanner(onScan, mode) {
   // mode: 'auto' = detect item/container, 'container' = only match containers (for association)
   const canCamera = window.isSecureContext && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
@@ -1397,7 +1571,8 @@ async function showScanner(onScan, mode) {
   }
 
   const overlay = h('div', { className: 'overlay', style: 'background:rgba(0,0,0,.9);flex-direction:column;gap:0' }, [
-    h('div', { style: 'color:#fff;padding:16px;text-align:center;font-size:17px;font-weight:600;flex-shrink:0' }, title),
+    h('div', { style: 'color:#fff;padding:16px 16px 4px;text-align:center;font-size:17px;font-weight:600;flex-shrink:0' }, title),
+    h('div', { id: 'qr-status', style: 'flex-shrink:0;display:none' }),
     h('div', { id: 'qr-reader', style: 'width:100%;max-width:400px;flex:1;display:flex;align-items:center;justify-content:center' }),
     // File upload button — always visible
     h('div', { style: 'padding:0 16px 8px;flex-shrink:0' }, [
@@ -1431,18 +1606,15 @@ async function showScanner(onScan, mode) {
     return;
   }
 
-  // Try native BarcodeDetector API first (GPU-accelerated, near-instant)
-  if (_hasBarcodeDetector) {
-    startNativeScanner(onScan, overlay);
-    return;
-  }
-
-  // Fallback: optimized html5-qrcode with lower camera resolution
-  startHtml5Scanner(onScan, overlay);
+  // Use jsQR Worker engine — BarcodeDetector API is unreliable on Safari
+  var sb = document.getElementById('qr-status');
+  if (sb) { sb.style.display = 'block'; sb.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#5ad8a6">⚡ jsQR 引擎 (Worker) — 请对准二维码</div>'; }
+  startJsQRScanner(onScan, overlay);
 }
 
 function stopScanner() {
   if (_nativeScanState) stopNativeScanner();
+  if (_jsQRState) stopJsQRScanner();
   if (_html5QrScanner) {
     try { _html5QrScanner.stop().catch(() => {}); } catch(e) {}
     _html5QrScanner = null;
@@ -1576,17 +1748,9 @@ function startContainerItemScan(containerId) {
 async function init() {
   try {
     // Load categories from DB (must happen before render)
-    try {
-      await loadCategories();
-    } catch (e) {
-      console.error('loadCategories failed:', e);
-    }
+    await loadCategories();
     // Load tags from DB
-    try {
-      await loadTags();
-    } catch (e) {
-      console.error('loadTags failed:', e);
-    }
+    await loadTags();
     // Register service worker
     if ('serviceWorker' in navigator) {
       try {

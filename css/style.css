@@ -385,10 +385,14 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
 @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .slide-in { animation: slideIn 0.2s ease-out; }
 
-/* ── 扫描缩放动画 (模拟支付宝自动聚焦效果) ── */
-@keyframes scan-pulse {
-  0%, 100% { border-color: rgba(0,200,100,.6); box-shadow: 0 0 0 9999px rgba(0,0,0,.35); }
-  50% { border-color: rgba(0,200,100,1); box-shadow: 0 0 0 9999px rgba(0,0,0,.45); }
+/* ── 扫描动画 (模拟支付宝扫描效果) ── */
+@keyframes scan-line-sweep {
+  0%, 100% { top: 10%; opacity: 0.3; }
+  50% { top: 90%; opacity: 1; }
+}
+@keyframes zoom-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.04); }
 }
 
 /* ── 安全区域 ── */
