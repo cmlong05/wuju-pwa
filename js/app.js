@@ -1,5 +1,5 @@
 /* ── 物居 PWA — Main Application ── */
-const APP_VERSION = 'v48';
+const APP_VERSION = 'v49';
 
 // ── Utilities ──
 function htmlEscape(str) {
@@ -1223,14 +1223,35 @@ function _barcodeDetectorAvailable() {
   }
 }
 
-// Supports torch (flashlight) control via MediaStreamTrack
-function _tryEnableTorch(stream) {
+// Supports torch (flashlight) toggle via MediaStreamTrack
+let _torchStream = null;
+let _torchOn = false;
+
+function _toggleTorch() {
   try {
-    var track = stream.getVideoTracks()[0];
-    if (track && 'torch' in track.getCapabilities()) {
-      track.applyConstraints({ advanced: [{ torch: true }] });
-    }
-  } catch(e) { /* torch not supported */ }
+    if (!_torchStream) return;
+    var track = _torchStream.getVideoTracks()[0];
+    if (!track) return;
+    var caps = track.getCapabilities();
+    if (!('torch' in caps)) return;
+    _torchOn = !_torchOn;
+    track.applyConstraints({ advanced: [{ torch: _torchOn }] });
+    // Update button icon
+    var btn = document.getElementById('torch-btn');
+    if (btn) btn.textContent = _torchOn ? '🔦' : '💡';
+  } catch(e) {}
+}
+
+function _setTorchStream(stream) {
+  _torchStream = stream;
+  _torchOn = false;
+  var btn = document.getElementById('torch-btn');
+  if (btn) {
+    try {
+      var t = stream.getVideoTracks()[0];
+      btn.style.display = (t && 'torch' in t.getCapabilities()) ? '' : 'none';
+    } catch(e) { btn.style.display = 'none'; }
+  }
 }
 
 // Native scanner using BarcodeDetector API — GPU-accelerated, frame-by-frame detection
@@ -1296,7 +1317,7 @@ async function startNativeScanner(onScan, overlay) {
       var track = stream.getVideoTracks()[0];
       if (track) track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
     } catch(_) {}
-    _tryEnableTorch(stream);
+    _setTorchStream(stream);
 
     // BarcodeDetector — try full format set, fallback to qr_code only
     var detector;
@@ -1499,6 +1520,9 @@ async function startJsQRScanner(onScan, overlay) {
 
     await _qrScanner.start();
 
+    // Store stream for torch toggle
+    if (video.srcObject) _setTorchStream(video.srcObject);
+
     // Auto-focus
     try {
       var stream = video.srcObject;
@@ -1556,6 +1580,12 @@ async function showScanner(onScan, mode) {
   const overlay = h('div', { className: 'overlay', style: 'background:rgba(0,0,0,.9);flex-direction:column;gap:0' }, [
     h('div', { style: 'color:#fff;padding:16px 16px 4px;text-align:center;font-size:17px;font-weight:600;flex-shrink:0' }, title),
     h('div', { id: 'qr-status', style: 'flex-shrink:0;display:none' }),
+    // Torch toggle
+    h('button', {
+      id: 'torch-btn',
+      style: 'display:none;margin:4px auto;padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font-size:20px;cursor:pointer;flex-shrink:0',
+      onclick: () => _toggleTorch()
+    }, '💡'),
     h('div', { id: 'qr-reader', style: 'width:100%;max-width:400px;flex:1;display:flex;align-items:center;justify-content:center' }),
     // File upload button — always visible
     h('div', { style: 'padding:0 16px 8px;flex-shrink:0' }, [
@@ -1596,6 +1626,8 @@ async function showScanner(onScan, mode) {
 }
 
 function stopScanner() {
+  _torchStream = null;
+  _torchOn = false;
   if (_nativeScanState) stopNativeScanner();
   if (_qrScanner) stopJsQRScanner();
   if (_html5QrScanner) {
