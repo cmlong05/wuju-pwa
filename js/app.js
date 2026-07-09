@@ -1,5 +1,5 @@
 /* ── 物居 PWA — Main Application ── */
-const APP_VERSION = 'v47';
+const APP_VERSION = 'v48';
 
 // ── Utilities ──
 function htmlEscape(str) {
@@ -1429,14 +1429,14 @@ async function startHtml5Scanner(onScan, overlay) {
   }
 }
 
-// ── jsQR scanner — fast pure-JS QR fallback (5-10x faster than html5-qrcode) ──
-let _jsQRState = null; // { video, canvas, stream, ctx, stopped, frameCount }
+// ── QrScanner engine — battle-tested jsQR wrapper with built-in Worker ──
+let _qrScanner = null; // QrScanner instance
 
 async function startJsQRScanner(onScan, overlay) {
   var area = document.getElementById('qr-reader');
   if (!area) return;
 
-  if (typeof jsQR !== 'function') {
+  if (typeof QrScanner !== 'function') {
     area.innerHTML = '';
     startHtml5Scanner(onScan, overlay);
     return;
@@ -1449,14 +1449,13 @@ async function startJsQRScanner(onScan, overlay) {
   var statusBar = document.getElementById('qr-status');
   if (statusBar) {
     statusBar.style.display = 'block';
-    if (statusBar.innerHTML.indexOf('jsQR') === -1) {
-      statusBar.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#5ad8a6">⚡ jsQR 引擎 — 请对准二维码</div>';
+    if (statusBar.innerHTML.indexOf('jsQR') === -1 && statusBar.innerHTML.indexOf('QrScanner') === -1) {
+      statusBar.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#5ad8a6">⚡ QrScanner — 请对准二维码</div>';
     }
   }
 
   var video = document.createElement('video');
   video.setAttribute('playsinline', '');
-  video.setAttribute('autoplay', '');
   video.muted = true;
   video.style.width = '100%';
   video.style.height = '100%';
@@ -1472,73 +1471,57 @@ async function startJsQRScanner(onScan, overlay) {
   scanLine.style.cssText = 'position:absolute;left:10%;width:80%;height:2px;background:linear-gradient(90deg,transparent,rgba(0,200,100,.8),transparent);top:50%;z-index:11;pointer-events:none;animation:scan-line-sweep 1.8s ease-in-out infinite;';
   zoomBox.appendChild(scanLine);
 
-  var canvas = document.createElement('canvas');
-  var ctx = canvas.getContext('2d', { willReadFrequently: true });
-  var detectSize = 300;
-  canvas.width = detectSize;
-  canvas.height = detectSize;
-
   try {
-    var stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' },
-      audio: false
+    _qrScanner = new QrScanner(video, function(result) {
+      stopJsQRScanner();
+      overlay.remove();
+      onScan(result.data);
+    }, {
+      highlightScanRegion: false,    // we have our own zoom box
+      highlightCodeOutline: false,
+      preferredCamera: 'environment',
+      maxScansPerSecond: 25,
+      calculateScanRegion: function(v) {
+        // Center-crop: detect only the center 55% of the frame
+        var vw = v.videoWidth || 640;
+        var vh = v.videoHeight || 480;
+        var cs = Math.floor(Math.min(vw, vh) * 0.55);
+        return {
+          x: Math.floor((vw - cs) / 2),
+          y: Math.floor((vh - cs) / 2),
+          width: cs,
+          height: cs,
+          downScaledWidth: 300,
+          downScaledHeight: 300
+        };
+      }
     });
-    video.srcObject = stream;
-    try { await video.play(); } catch(_) {}
 
+    await _qrScanner.start();
+
+    // Auto-focus
     try {
-      var track = stream.getVideoTracks()[0];
-      if (track) track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+      var stream = video.srcObject;
+      if (stream) {
+        var track = stream.getVideoTracks()[0];
+        if (track) track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+      }
     } catch(_) {}
 
-    _jsQRState = { video: video, canvas: canvas, stream: stream, ctx: ctx, stopped: false, frameCount: 0 };
-
-    function tick() {
-      var s = _jsQRState;
-      if (!s || s.stopped) return;
-
-      s.frameCount++;
-      // Every 3rd frame: balance CPU vs responsiveness
-      if (s.frameCount % 3 !== 0) {
-        requestAnimationFrame(tick);
-        return;
-      }
-
-      var vw = video.videoWidth || 640;
-      var vh = video.videoHeight || 480;
-      var cs = Math.floor(Math.min(vw, vh) * 0.5);
-      var sx = Math.floor((vw - cs) / 2);
-      var sy = Math.floor((vh - cs) / 2);
-      ctx.drawImage(video, sx, sy, cs, cs, 0, 0, canvas.width, canvas.height);
-
-      var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      var result = jsQR(imageData.data, canvas.width, canvas.height);
-
-      if (result) {
-        stopJsQRScanner();
-        overlay.remove();
-        onScan(result.data);
-        return;
-      }
-      if (_jsQRState && !_jsQRState.stopped) {
-        requestAnimationFrame(tick);
-      }
-    }
-    tick();
   } catch(e) {
-    if (_jsQRState) stopJsQRScanner();
+    if (_qrScanner) { _qrScanner.destroy(); _qrScanner = null; }
     area.innerHTML = '';
     startHtml5Scanner(onScan, overlay);
   }
 }
 
 function stopJsQRScanner() {
-  if (!_jsQRState) return;
-  _jsQRState.stopped = true;
-  if (_jsQRState.stream) {
-    _jsQRState.stream.getTracks().forEach(function(t) { t.stop(); });
+  if (_qrScanner) {
+    _qrScanner.stop();
+    _qrScanner.destroy();
+    _qrScanner = null;
   }
-  _jsQRState = null;
+  if (_nativeScanState) { stopNativeScanner(); }
 }
 
 async function showScanner(onScan, mode) {
@@ -1608,13 +1591,13 @@ async function showScanner(onScan, mode) {
 
   // Use jsQR engine — BarcodeDetector API is unreliable on Safari
   var sb = document.getElementById('qr-status');
-  if (sb) { sb.style.display = 'block'; sb.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#5ad8a6">⚡ jsQR 引擎 — 请对准二维码</div>'; }
+  if (sb) { sb.style.display = 'block'; sb.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#5ad8a6">⚡ QrScanner — 请对准二维码</div>'; }
   startJsQRScanner(onScan, overlay);
 }
 
 function stopScanner() {
   if (_nativeScanState) stopNativeScanner();
-  if (_jsQRState) stopJsQRScanner();
+  if (_qrScanner) stopJsQRScanner();
   if (_html5QrScanner) {
     try { _html5QrScanner.stop().catch(() => {}); } catch(e) {}
     _html5QrScanner = null;
