@@ -1134,10 +1134,8 @@ function showQRModal(type, id, name, savedCode) {
   var currentText = savedCode || ('wuju:' + type + ':' + id);
 
   function renderQRSVG() {
-    var qr = qrcode(0, 'M');
-    qr.addData(currentText);
-    qr.make();
-    return qr.createSvgTag(4, 0);
+    var w = new ZXing.BrowserQRCodeSvgWriter();
+    return w.write(currentText, 300, 300);
   }
 
   function refreshQR() {
