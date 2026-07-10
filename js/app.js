@@ -1390,18 +1390,13 @@ function stopNativeScanner() {
 }
 
 
-// ── QrScanner engine — battle-tested jsQR wrapper with built-in Worker ──
-let _qrScanner = null; // QrScanner instance
+// ── ZXing engine — BrowserMultiFormatReader ──
+let _zxingReader = null; // ZXing BrowserMultiFormatReader instance
 
 async function startJsQRScanner(onScan, overlay) {
   var area = document.getElementById('qr-reader');
   if (!area) return;
-
-  if (typeof QrScanner !== 'function') {
-    area.innerHTML = '';
-    startJsQRScanner(onScan, overlay);
-    return;
-  }
+  if (typeof ZXing === 'undefined') return;
 
   area.style.position = 'relative';
   area.style.overflow = 'hidden';
@@ -1410,9 +1405,7 @@ async function startJsQRScanner(onScan, overlay) {
   var statusBar = document.getElementById('qr-status');
   if (statusBar) {
     statusBar.style.display = 'block';
-    if (statusBar.innerHTML.indexOf('jsQR') === -1 && statusBar.innerHTML.indexOf('QrScanner') === -1) {
-      statusBar.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#5ad8a6">⚡ QrScanner — 请对准二维码</div>';
-    }
+    statusBar.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#5ad8a6">⚡ ZXing — 请对准条码</div>';
   }
 
   var video = document.createElement('video');
@@ -1422,141 +1415,82 @@ async function startJsQRScanner(onScan, overlay) {
   video.style.height = '100%';
   video.style.objectFit = 'cover';
   video.style.borderRadius = '12px';
-  area.appendChild(video);
 
   var zoomBox = document.createElement('div');
   zoomBox.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:2px solid rgba(0,200,100,.7);border-radius:16px;pointer-events:none;box-shadow:0 0 0 2000px rgba(0,0,0,.35);z-index:10;animation:zoom-pulse 2s ease-in-out infinite;';
+  area.appendChild(video);
   area.appendChild(zoomBox);
 
-  var scanLine = document.createElement('div');
-  scanLine.style.cssText = 'position:absolute;left:10%;width:80%;height:2px;background:linear-gradient(90deg,transparent,rgba(0,200,100,.8),transparent);top:50%;z-index:11;pointer-events:none;animation:scan-line-sweep 1.8s ease-in-out infinite;';
-  zoomBox.appendChild(scanLine);
-
   try {
-    _qrScanner = new QrScanner(video, function(result) {
-      stopJsQRScanner();
-      overlay.remove();
-      // QrScanner returns string when returnDetailedScanResult=false (default)
-      onScan(typeof result === 'string' ? result : result.data);
-    }, {
-      preferredCamera: 'environment',
-      maxScansPerSecond: 25,
-      onDecodeError: function(err) {
-        // Only log real errors, ignore normal "No QR code found" frames
-        if (String(err).indexOf('No QR code found') !== -1) return;
-        var sb = document.getElementById('qr-status');
-        if (sb && !_qrScanner) return; // already stopped
-        if (sb) sb.innerHTML += '<div style="font-size:10px;color:#666">err:' + String(err).substring(0,40) + '</div>';
-      }
-    });
+    _zxingReader = new ZXing.BrowserMultiFormatReader();
+    var hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+      ZXing.BarcodeFormat.QR_CODE,
+      ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39
+    ]);
+    _zxingReader.hints = hints;
 
-    // Ensure video is in DOM before starting scanner
-    await new Promise(function(r) { requestAnimationFrame(r); });
-    await _qrScanner.start();
+    var controls = await _zxingReader.listVideoInputDevices();
+    var deviceId = null;
+    if (controls && controls.length) {
+      var back = controls.find(function(d) { return /back|rear|environment/i.test(d.label || ''); });
+      deviceId = back ? back.deviceId : controls[0].deviceId;
+    }
 
-    // Store stream for torch toggle
-    if (video.srcObject) _setTorchStream(video.srcObject);
+    var constraints = { video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } };
+    if (deviceId) constraints.video.deviceId = { exact: deviceId };
 
-    // Auto-focus
-    try {
-      var stream = video.srcObject;
-      if (stream) {
-        var track = stream.getVideoTracks()[0];
-        if (track) track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-      }
-    } catch(_) {}
+    var stream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = stream;
+    try { await video.play(); } catch (_) {}
+    _torchStream = stream;
+    _setTorchStream(stream);
 
-  } catch(e) {
-    if (_qrScanner) { _qrScanner.destroy(); _qrScanner = null; }
-    area.innerHTML = '';
-    startJsQRScanner(onScan, overlay);
-  }
-}
-
-function stopJsQRScanner() {
-  if (_qrScanner) {
-    _qrScanner.stop();
-    _qrScanner.destroy();
-    _qrScanner = null;
-  }
-  if (_nativeScanState) { stopNativeScanner(); }
-}
-
-async function showScanner(onScan, mode) {
-  // mode: 'auto' = detect item/container, 'container' = only match containers (for association)
-  const canCamera = window.isSecureContext && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
-  const title = mode === 'container' ? '扫描容器条码/二维码' : '扫描条码/二维码';
-
-  // File-based scanning (via upload)
-  function doFileScan(file) {
-    // Use QrScanner for static image scanning
-    QrScanner.scanImage(file, { returnDetailedScanResult: false })
-      .then(decodedText => {
-        stopScanner();
-        overlay.remove();
-        onScan(decodedText);
-      })
-      .catch(err => {
-        var area = document.getElementById('qr-reader');
-        if (area) {
-          area.innerHTML = '<div style="color:#ff6b6b;text-align:center;padding:20px">❌ 未识别到条码或二维码<br><span style="font-size:13px;color:#aaa">请换一张清晰的图片重试</span></div>';
+    // Continuous decode loop
+    function scanLoop() {
+      if (!_zxingReader) return;
+      _zxingReader.decodeFromVideoElement(video).then(function(result) {
+        if (_zxingReader) {
+          _zxingReader.reset();
+          _zxingReader = null;
         }
+        if (stream) { stream.getTracks().forEach(function(t) { t.stop(); }); }
+        overlay.remove();
+        onScan(result.text);
+      }).catch(function() {
+        if (_zxingReader) requestAnimationFrame(scanLoop);
       });
-  }
-
-  const overlay = h('div', { className: 'overlay', style: 'background:rgba(0,0,0,.9);flex-direction:column;gap:0' }, [
-    h('div', { style: 'color:#fff;padding:16px 16px 4px;text-align:center;font-size:17px;font-weight:600;flex-shrink:0' }, title),
-    h('div', { id: 'qr-status', style: 'flex-shrink:0;display:none' }),
-    // Torch toggle
-    h('button', {
-      id: 'torch-btn',
-      style: 'display:none;margin:4px auto;padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font-size:20px;cursor:pointer;flex-shrink:0',
-      onclick: () => _toggleTorch()
-    }, '💡'),
-    h('div', { id: 'qr-reader', style: 'width:100%;max-width:400px;flex:1;display:flex;align-items:center;justify-content:center' }),
-    // File upload button — always visible
-    h('div', { style: 'padding:0 16px 8px;flex-shrink:0' }, [
-      h('label', {
-        style: 'display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:10px;border:1px dashed rgba(255,255,255,.4);color:#fff;font-size:15px;cursor:pointer;background:rgba(255,255,255,.05)',
-        htmlFor: 'qr-file-input'
-      }, [h('span', {}, '🖼'), h('span', {}, '从相册选择条码/二维码图片')]),
-      h('input', {
-        type: 'file', id: 'qr-file-input', accept: 'image/*', capture: 'environment',
-        style: 'display:none',
-        onchange: (e) => { if (e.target.files[0]) doFileScan(e.target.files[0]); }
-      })
-    ]),
-    h('button', {
-      style: 'margin:8px 16px 16px;padding:12px 24px;border-radius:8px;border:none;background:rgba(255,255,255,.2);color:#fff;font-size:15px;cursor:pointer;flex-shrink:0',
-      onclick: () => { stopScanner(); overlay.remove(); }
-    }, '关闭'),
-  ]);
-  document.body.appendChild(overlay);
-
-  if (!canCamera) {
-    // Show file upload hint immediately
-    var area = document.getElementById('qr-reader');
+    }
+    requestAnimationFrame(scanLoop);
+  } catch (e) {
+    var errMsg = (e && e.message) || String(e);
     if (area) {
       area.innerHTML = '<div style="color:#fff;text-align:center;padding:30px">' +
         '<div style="font-size:48px;margin-bottom:12px">📱</div>' +
-        '<div style="font-size:16px;margin-bottom:8px">当前环境不支持摄像头</div>' +
-        '<div style="font-size:13px;color:#aaa;line-height:1.6">请点击下方按钮<br>从相册选择条码/二维码图片</div>' +
+        '<div style="font-size:16px;margin-bottom:8px">无法启动摄像头</div>' +
+        '<div style="font-size:13px;color:#aaa;line-height:1.6">请点击下方按钮从相册选择条码/二维码图片</div>' +
+        '<div style="font-size:11px;color:#666;margin-top:8px">' + htmlEscape(errMsg.substring(0, 80)) + '</div>' +
         '</div>';
     }
-    return;
   }
-
-  // Use jsQR engine — BarcodeDetector API is unreliable on Safari
-  var sb = document.getElementById('qr-status');
-  if (sb) { sb.style.display = 'block'; sb.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#5ad8a6">⚡ QrScanner — 请对准二维码</div>'; }
-  startJsQRScanner(onScan, overlay);
 }
 
+function stopScanner() {
+  if (_nativeScanState) { stopNativeScanner(); }
+  if (_zxingReader) {
+    try { _zxingReader.reset(); } catch(e) {}
+    _zxingReader = null;
+  }
+}
 function stopScanner() {
   _torchStream = null;
   _torchOn = false;
   if (_nativeScanState) stopNativeScanner();
-  if (_qrScanner) stopJsQRScanner();
+  if (_zxingReader) {
+    try { _zxingReader.reset(); } catch(e) {}
+    _zxingReader = null;
+  }
 }
 
 // 通用扫描入口 — 自动判断物品/容器
