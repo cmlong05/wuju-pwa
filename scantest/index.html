@@ -7,43 +7,50 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>扫码测试</title>
   <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: #000; font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      height: 100dvh; width: 100vw; overflow: hidden;
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #000;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     }
-    #qr-video { width: 100%; height: 100%; }
-    #qr-video video { object-fit: cover !important; }
-    /* 隐藏库自带的内边框 */
-    #qr-video canvas { display: none !important; }
-
+    /* 摄像头容器 — 必须明确尺寸 */
+    #qr-video {
+      width: 100vw; height: 100vh; height: 100dvh;
+      position: relative;
+    }
+    /* 库自建 video 填满 */
+    #qr-video video {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
+    }
+    /* 状态 */
     #status {
-      position: fixed; top: 50px; left: 0; right: 0; z-index: 10;
+      position: fixed; top: 50px; left: 0; right: 0; z-index: 20;
       text-align: center; font-size: 14px; color: #5ad8a6;
-      text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+      text-shadow: 0 1px 4px rgba(0,0,0,0.6); pointer-events: none;
     }
+    /* 按钮 */
     #controls {
       position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
-      z-index: 10; display: flex; gap: 16px;
+      z-index: 20; display: flex; gap: 16px;
     }
     #controls button {
       width: 48px; height: 48px; border-radius: 50%;
       border: none; background: rgba(255,255,255,0.15);
       color: #fff; font-size: 20px; cursor: pointer;
-      backdrop-filter: blur(8px);
-      display: flex; align-items: center; justify-content: center;
     }
     #controls button:active { background: rgba(255,255,255,0.3); }
     #result {
-      position: fixed; bottom: 110px; left: 16px; right: 16px; z-index: 10;
+      position: fixed; bottom: 110px; left: 16px; right: 16px; z-index: 20;
       background: rgba(0,0,0,0.7); color: #5ad8a6;
       padding: 12px 16px; border-radius: 10px;
       text-align: center; font-size: 15px; display: none;
-      word-break: break-all; backdrop-filter: blur(8px);
+      word-break: break-all;
     }
     #loading {
       position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      z-index: 20; color: #fff; font-size: 16px;
+      z-index: 30; color: #fff; font-size: 16px;
     }
     .spinner {
       display: inline-block; width: 24px; height: 24px;
@@ -56,35 +63,25 @@
   </style>
 </head>
 <body>
-
 <div id="qr-video"></div>
 <div id="status">⚡ 对准二维码</div>
 <div id="result"></div>
 <div id="controls">
   <button id="btn-camera" title="切换摄像头">🔄</button>
   <button id="btn-flash" title="手电筒">💡</button>
-  <button id="btn-file" title="从相册选择">🖼️</button>
+  <button id="btn-file" title="相册">🖼️</button>
 </div>
 <div id="loading"><span class="spinner"></span>启动摄像头…</div>
 
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
-var scanner = null;
-var facingBack = true;
-var scanActive = false;
-var videoTrack = null;
-var flashOn = false;
-
 var $ = function(id) { return document.getElementById(id); };
+var scanner = null, facingBack = true, scanActive = false, videoTrack = null, flashOn = false;
 
-function showStatus(msg, color) {
-  $('status').textContent = msg;
-  $('status').style.color = color || '#5ad8a6';
-}
+function showStatus(msg, color) { $('status').textContent = msg; $('status').style.color = color || '#5ad8a6'; }
 
 function checkTorch() {
-  if (!videoTrack) return false;
-  try { return 'torch' in (videoTrack.getCapabilities() || {}); } catch(_) { return false; }
+  try { return videoTrack && 'torch' in videoTrack.getCapabilities(); } catch(_) { return false; }
 }
 
 function toggleFlash() {
@@ -98,37 +95,20 @@ function toggleFlash() {
 
 async function stopScanner() {
   if (scanner) {
-    try { var s = scanner.getState(); if (s === 2) await scanner.stop(); } catch(_) {}
+    try { if (scanner.getState() === 2) await scanner.stop(); } catch(_) {}
     try { scanner.clear(); } catch(_) {}
     scanner = null;
   }
-  scanActive = false;
-  flashOn = false;
-  videoTrack = null;
+  scanActive = false; flashOn = false; videoTrack = null;
 }
 
 async function startScanner() {
-  $('loading').style.display = '';
-  $('result').style.display = 'none';
-  $('btn-flash').style.display = 'none';
-
+  $('loading').style.display = ''; $('result').style.display = 'none'; $('btn-flash').style.display = 'none';
   await stopScanner();
   scanner = new Html5Qrcode('qr-video');
-
-  // 完全一致的配置
   await scanner.start(
     { facingMode: facingBack ? 'environment' : 'user' },
-    {
-      fps: 5,
-      qrbox: { width: 250, height: 250 },
-      aspectRatio: 1,
-      disableFlip: false,
-      videoConstraints: {
-        width: { ideal: 1080 },
-        height: { ideal: 1080 },
-        facingMode: facingBack ? 'environment' : 'user'
-      }
-    },
+    { fps: 5, qrbox: { width: 250, height: 250 }, aspectRatio: 1, disableFlip: false },
     function(decodedText) {
       if (!scanActive) return;
       scanActive = false;
@@ -140,57 +120,39 @@ async function startScanner() {
     },
     function() {}
   );
-
   scanActive = true;
-
-  try {
-    videoTrack = document.querySelector('#qr-video video').srcObject.getVideoTracks()[0] || null;
-  } catch(_) {}
-
+  try { videoTrack = document.querySelector('#qr-video video').srcObject.getVideoTracks()[0] || null; } catch(_) {}
   $('btn-flash').style.display = checkTorch() ? '' : 'none';
   $('loading').style.display = 'none';
   showStatus('⚡ 对准二维码');
 }
 
 async function switchCamera() {
-  facingBack = !facingBack;
-  $('btn-flash').style.display = 'none';
-  $('result').style.display = 'none';
-  showStatus('切换摄像头…', '#aaa');
-  await startScanner();
+  facingBack = !facingBack; $('btn-flash').style.display = 'none'; $('result').style.display = 'none';
+  showStatus('切换…', '#aaa'); await startScanner();
 }
 
 function fileScan() {
-  var input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/*';
-  input.onchange = function(e) {
-    var file = e.target.files[0];
-    if (!file) return;
-    showStatus('解析图片…', '#f6bd16');
+  var i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*';
+  i.onchange = function(e) {
+    var f = e.target.files[0]; if (!f) return;
+    showStatus('解析…', '#f6bd16');
     var r = new Html5Qrcode('qr-video');
-    r.scanFile(file, false).then(function(text) {
-      $('result').style.display = 'block';
-      $('result').innerHTML = '✅ <b>' + text + '</b>';
-      $('result').style.color = '#5ad8a6';
-      r.clear();
+    r.scanFile(f, false).then(function(t) {
+      $('result').style.display = 'block'; $('result').innerHTML = '✅ <b>' + t + '</b>'; r.clear();
     }).catch(function() {
-      $('result').style.display = 'block';
-      $('result').innerHTML = '❌ 未识别';
-      $('result').style.color = '#ff6b6b';
-      r.clear();
+      $('result').style.display = 'block'; $('result').innerHTML = '❌ 未识别'; $('result').style.color = '#ff6b6b'; r.clear();
     });
   };
-  input.click();
+  i.click();
 }
 
 $('btn-camera').addEventListener('click', switchCamera);
 $('btn-flash').addEventListener('click', toggleFlash);
 $('btn-file').addEventListener('click', fileScan);
-
 startScanner().catch(function(err) {
   $('loading').style.display = 'none';
-  showStatus('❌ ' + (err.message || '无法启动摄像头'), '#ff6b6b');
+  showStatus('❌ ' + (err.message || '无法启动'), '#ff6b6b');
 });
 </script>
 </body>
