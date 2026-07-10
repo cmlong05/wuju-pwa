@@ -94,7 +94,6 @@ async function start(){
 
 function scanFrame(){
   if(!stream || !videoEl || videoEl.readyState < 2){
-    // 视频还没就绪，等下一帧
     if(stream) rafId = requestAnimationFrame(scanFrame);
     return;
   }
@@ -105,32 +104,33 @@ function scanFrame(){
     return;
   }
 
-  // 调整canvas尺寸匹配视频
   if(canvas.width !== vw || canvas.height !== vh){
     canvas.width = vw;
     canvas.height = vh;
   }
 
-  // 画视频帧到 canvas
   ctx.drawImage(videoEl, 0, 0, vw, vh);
 
-  // 用 canvas 解码
-  reader.decodeFromCanvas(canvas).then(function(result){
+  // BrowserMultiFormatReader 没有 decodeFromCanvas，用底层 BinaryBitmap API
+  try {
+    var src = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+    var bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));
+    var result = reader.decodeBitmap(bmp);
+
     var dt = (performance.now()-scanStart).toFixed(0);
     $('result').style.display='block';
     $('result').innerHTML='✅ <b>'+result.text+'</b><br><small>'+dt+'ms</small>';
     $('status').textContent='识别成功! ('+dt+'ms)';
     $('status').style.color='#5ad8a6';
-    // 3秒后重新开始
     setTimeout(function(){
       $('result').style.display='none';
       scanStart = performance.now();
       if(stream) rafId = requestAnimationFrame(scanFrame);
     }, 3000);
-  }).catch(function(err){
-    // 没找到 QR 码，继续
+  } catch(err){
+    // NotFoundException — QR 码不在画面中，继续扫描
     if(stream) rafId = requestAnimationFrame(scanFrame);
-  });
+  }
 }
 
 function stopScan(){
