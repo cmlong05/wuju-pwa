@@ -108,7 +108,13 @@ async function startScanner() {
   scanner = new Html5Qrcode('qr-video');
   await scanner.start(
     { facingMode: facingBack ? 'environment' : 'user' },
-    { fps: 5, qrbox: { width: 250, height: 250 }, aspectRatio: 1, disableFlip: false },
+    { fps: 5, qrbox: { width: 250, height: 250 }, aspectRatio: 1, disableFlip: false,
+      videoConstraints: {
+        width: { ideal: 1080 },
+        height: { ideal: 1080 },
+        facingMode: facingBack ? 'environment' : 'user'
+      }
+    },
     function(decodedText) {
       if (!scanActive) return;
       scanActive = false;
