@@ -1,4 +1,12 @@
 /* ── 物居 PWA — Main Application ── */
+
+// Force Service Worker update check on every page load
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistration().then(function(reg) {
+    if (reg) reg.update();
+  });
+}
+
 // ── Utilities ──
 function htmlEscape(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
