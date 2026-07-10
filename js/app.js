@@ -1,5 +1,5 @@
 /* ── 物居 PWA — Main Application ── */
-const APP_VERSION = 'v49';
+const APP_VERSION = 'v51';
 
 // ── Utilities ──
 function htmlEscape(str) {
@@ -1496,28 +1496,21 @@ async function startJsQRScanner(onScan, overlay) {
     _qrScanner = new QrScanner(video, function(result) {
       stopJsQRScanner();
       overlay.remove();
-      onScan(result.data);
+      // QrScanner returns string when returnDetailedScanResult=false (default)
+      onScan(typeof result === 'string' ? result : result.data);
     }, {
-      highlightScanRegion: false,    // we have our own zoom box
-      highlightCodeOutline: false,
       preferredCamera: 'environment',
       maxScansPerSecond: 25,
-      calculateScanRegion: function(v) {
-        // Center-crop: detect only the center 55% of the frame
-        var vw = v.videoWidth || 640;
-        var vh = v.videoHeight || 480;
-        var cs = Math.floor(Math.min(vw, vh) * 0.55);
-        return {
-          x: Math.floor((vw - cs) / 2),
-          y: Math.floor((vh - cs) / 2),
-          width: cs,
-          height: cs,
-          downScaledWidth: 300,
-          downScaledHeight: 300
-        };
+      onDecodeError: function(err) {
+        // Log decode errors to status bar for diagnostics
+        var sb = document.getElementById('qr-status');
+        if (sb && !_qrScanner) return; // already stopped
+        if (sb) sb.innerHTML += '<div style="font-size:10px;color:#666">err:' + String(err).substring(0,40) + '</div>';
       }
     });
 
+    // Ensure video is in DOM before starting scanner
+    await new Promise(function(r) { requestAnimationFrame(r); });
     await _qrScanner.start();
 
     // Store stream for torch toggle
