@@ -1508,6 +1508,71 @@ function stopScanner() {
   }
 }
 
+async function showScanner(onScan, mode) {
+  var canCamera = window.isSecureContext && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
+  var title = mode === 'container' ? '扫描容器条码/二维码' : '扫描条码/二维码';
+
+  function doFileScan(file) {
+    var url = URL.createObjectURL(file);
+    var r = _zxingReader || new ZXing.BrowserMultiFormatReader();
+    r.decodeFromImageUrl(url).then(function(result) {
+      URL.revokeObjectURL(url);
+      stopScanner();
+      overlay.remove();
+      onScan(result.text);
+    }).catch(function() {
+      URL.revokeObjectURL(url);
+      var area = document.getElementById('qr-reader');
+      if (area) {
+        area.innerHTML = '<div style="color:#ff6b6b;text-align:center;padding:20px">❌ 未识别到条码或二维码<br><span style="font-size:13px;color:#aaa">请换一张清晰的图片重试</span></div>';
+      }
+    });
+  }
+
+  var overlay = h('div', { className: 'overlay', style: 'background:rgba(0,0,0,.9);flex-direction:column;gap:0' }, [
+    h('div', { style: 'color:#fff;padding:16px 16px 4px;text-align:center;font-size:17px;font-weight:600;flex-shrink:0' }, title),
+    h('div', { id: 'qr-status', style: 'flex-shrink:0;display:none' }),
+    h('button', {
+      id: 'torch-btn',
+      style: 'display:none;margin:4px auto;padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font-size:20px;cursor:pointer;flex-shrink:0',
+      onclick: function() { _toggleTorch(); }
+    }, '💡'),
+    h('div', { id: 'qr-reader', style: 'width:100%;max-width:400px;flex:1;display:flex;align-items:center;justify-content:center' }),
+    h('div', { style: 'padding:0 16px 8px;flex-shrink:0' }, [
+      h('label', {
+        style: 'display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:10px;border:1px dashed rgba(255,255,255,.4);color:#fff;font-size:15px;cursor:pointer;background:rgba(255,255,255,.05)',
+        htmlFor: 'qr-file-input'
+      }, [h('span', {}, '🖼'), h('span', {}, '从相册选择条码/二维码图片')]),
+      h('input', {
+        type: 'file', id: 'qr-file-input', accept: 'image/*', capture: 'environment',
+        style: 'display:none',
+        onchange: function(e) { if (e.target.files[0]) doFileScan(e.target.files[0]); }
+      })
+    ]),
+    h('button', {
+      style: 'margin:8px 16px 16px;padding:12px 24px;border-radius:8px;border:none;background:rgba(255,255,255,.2);color:#fff;font-size:15px;cursor:pointer;flex-shrink:0',
+      onclick: function() { stopScanner(); overlay.remove(); }
+    }, '关闭')
+  ]);
+  document.body.appendChild(overlay);
+
+  if (!canCamera) {
+    var area = document.getElementById('qr-reader');
+    if (area) {
+      area.innerHTML = '<div style="color:#fff;text-align:center;padding:30px">' +
+        '<div style="font-size:48px;margin-bottom:12px">📱</div>' +
+        '<div style="font-size:16px;margin-bottom:8px">当前环境不支持摄像头</div>' +
+        '<div style="font-size:13px;color:#aaa;line-height:1.6">请点击下方按钮<br>从相册选择条码/二维码图片</div>' +
+        '</div>';
+    }
+    return;
+  }
+
+  var sb = document.getElementById('qr-status');
+  if (sb) { sb.style.display = 'block'; sb.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#5ad8a6">⚡ ZXing — 请对准条码</div>'; }
+  startJsQRScanner(onScan, overlay);
+}
+
 
 // 通用扫描入口 — 自动判断物品/容器
 async function startUniversalScan() {
