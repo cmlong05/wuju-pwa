@@ -1,5 +1,5 @@
 /* ── 物居 PWA — Main Application ── */
-const APP_VERSION = 'v52';
+const APP_VERSION = 'v53';
 
 // ── Utilities ──
 function htmlEscape(str) {
@@ -1502,7 +1502,8 @@ async function startJsQRScanner(onScan, overlay) {
       preferredCamera: 'environment',
       maxScansPerSecond: 25,
       onDecodeError: function(err) {
-        // Log decode errors to status bar for diagnostics
+        // Only log real errors, ignore normal "No QR code found" frames
+        if (String(err).indexOf('No QR code found') !== -1) return;
         var sb = document.getElementById('qr-status');
         if (sb && !_qrScanner) return; // already stopped
         if (sb) sb.innerHTML += '<div style="font-size:10px;color:#666">err:' + String(err).substring(0,40) + '</div>';
