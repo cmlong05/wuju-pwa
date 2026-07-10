@@ -31,27 +31,27 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 <script src="zxing-browser.min.js"></script>
 <script>
 var $=function(id){return document.getElementById(id)};
-var reader, stream, track, flash=false, facingBack=true, scanStart=0, scanTimer=null;
+var reader, stream, track, flash=false, facingBack=true, scanStart=0, rafId=null;
 var videoEl = $('video');
+var canvas = document.createElement('canvas');
+var ctx = canvas.getContext('2d', {willReadFrequently: true});
 
 async function init(){
   reader = new ZXing.BrowserMultiFormatReader();
-  // Set hints for faster QR detection
   var hints = new Map();
   hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
+  hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
   reader.hints = hints;
   await start();
 }
 
 async function start(){
-  $('result').style.display='none';$('btnFlash').style.display='none';
-  $('status').textContent='启动摄像头…';$('status').style.color='#fff';
+  stopScan();
+  $('result').style.display='none';
+  $('btnFlash').style.display='none';
+  $('status').textContent='启动摄像头…';
+  $('status').style.color='#fff';
 
-  // Stop any existing scan
-  if(scanTimer){clearInterval(scanTimer);scanTimer=null}
-  reader.reset();
-
-  // Get camera stream manually for better control
   if(stream){stream.getTracks().forEach(function(t){t.stop()});stream=null}
 
   var deviceId = null;
@@ -66,7 +66,7 @@ async function start(){
     }
   }catch(e){}
 
-  var constraints = {video: {facingMode: facingBack?'environment':'user',width:{ideal:1920},height:{ideal:1080}}};
+  var constraints = {video: {facingMode: facingBack?'environment':'user', width:{ideal:1280}, height:{ideal:720}}};
   if(deviceId) constraints.video.deviceId = {exact: deviceId};
 
   try{
@@ -80,42 +80,86 @@ async function start(){
   }
 
   track = stream.getVideoTracks()[0];
-  $('btnFlash').style.display = track && ('torch' in (track.getCapabilities()||{})) ? '' : 'none';
+  try{
+    $('btnFlash').style.display = track && ('torch' in (track.getCapabilities()||{})) ? '' : 'none';
+  }catch(e){$('btnFlash').style.display='none'}
 
   scanStart = performance.now();
   $('status').textContent='⚡ ZXing — 对准条码';
   $('status').style.color='#5ad8a6';
 
-  // Continuous scan loop
-  (function scanLoop(){
-    if(!stream) return;
-    reader.decodeFromVideoElement(videoEl).then(function(result){
-      var dt = (performance.now()-scanStart).toFixed(0);
-      $('result').style.display='block';
-      $('result').innerHTML='✅ <b>'+result.text+'</b><br><small>'+dt+'ms</small>';
-      $('status').textContent='识别成功! ('+dt+'ms)';
-      $('status').style.color='#5ad8a6';
-      // 3秒后重新开始
-      setTimeout(function(){
-        $('result').style.display='none';
-        scanStart = performance.now();
-        scanLoop();
-      }, 3000);
-    }).catch(function(err){
-      // Normal: no QR found yet
-      if(stream) scanTimer = setTimeout(scanLoop, 100);
-    });
-  })();
+  // 用 requestAnimationFrame 手动抓帧，避过 iOS Safari decodeFromVideoElement 兼容问题
+  scanFrame();
+}
+
+function scanFrame(){
+  if(!stream || !videoEl || videoEl.readyState < 2){
+    // 视频还没就绪，等下一帧
+    if(stream) rafId = requestAnimationFrame(scanFrame);
+    return;
+  }
+
+  var vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+  if(!vw || !vh){
+    if(stream) rafId = requestAnimationFrame(scanFrame);
+    return;
+  }
+
+  // 调整canvas尺寸匹配视频
+  if(canvas.width !== vw || canvas.height !== vh){
+    canvas.width = vw;
+    canvas.height = vh;
+  }
+
+  // 画视频帧到 canvas
+  ctx.drawImage(videoEl, 0, 0, vw, vh);
+
+  // 用 canvas 解码
+  reader.decodeFromCanvas(canvas).then(function(result){
+    var dt = (performance.now()-scanStart).toFixed(0);
+    $('result').style.display='block';
+    $('result').innerHTML='✅ <b>'+result.text+'</b><br><small>'+dt+'ms</small>';
+    $('status').textContent='识别成功! ('+dt+'ms)';
+    $('status').style.color='#5ad8a6';
+    // 3秒后重新开始
+    setTimeout(function(){
+      $('result').style.display='none';
+      scanStart = performance.now();
+      if(stream) rafId = requestAnimationFrame(scanFrame);
+    }, 3000);
+  }).catch(function(err){
+    // 没找到 QR 码，继续
+    if(stream) rafId = requestAnimationFrame(scanFrame);
+  });
+}
+
+function stopScan(){
+  if(rafId){cancelAnimationFrame(rafId);rafId=null}
+  reader && reader.reset();
 }
 
 function stop(){
-  if(scanTimer){clearInterval(scanTimer);scanTimer=null}
+  stopScan();
   if(stream){stream.getTracks().forEach(function(t){t.stop()});stream=null}
-  reader.reset();
 }
 
-$('btnCam').onclick=function(){facingBack=!facingBack;$('btnFlash').style.display='none';$('result').style.display='none';stop();start()};
-$('btnFlash').onclick=function(){if(!track)return;flash=!flash;try{track.applyConstraints({advanced:[{torch:flash}]});$('btnFlash').textContent=flash?'🔦':'💡'}catch(e){}};
+$('btnCam').onclick=function(){
+  facingBack=!facingBack;
+  $('btnFlash').style.display='none';
+  $('result').style.display='none';
+  stop();
+  start();
+};
+
+$('btnFlash').onclick=function(){
+  if(!track)return;
+  flash=!flash;
+  try{
+    track.applyConstraints({advanced:[{torch:flash}]});
+    $('btnFlash').textContent=flash?'🔦':'💡';
+  }catch(e){}
+};
+
 $('btnFile').onclick=function(){
   var i=document.createElement('input');i.type='file';i.accept='image/*';
   i.onchange=function(e){
@@ -123,17 +167,22 @@ $('btnFile').onclick=function(){
     $('status').textContent='解析…';
     var url=URL.createObjectURL(f);
     reader.decodeFromImageUrl(url).then(function(r){
-      $('result').style.display='block';$('result').innerHTML='✅ <b>'+r.text+'</b>';
+      $('result').style.display='block';
+      $('result').innerHTML='✅ <b>'+r.text+'</b>';
       URL.revokeObjectURL(url);
     }).catch(function(){
-      $('result').style.display='block';$('result').innerHTML='❌ 未识别';
+      $('result').style.display='block';
+      $('result').innerHTML='❌ 未识别';
       URL.revokeObjectURL(url);
     });
   };
   i.click();
 };
 
-init().catch(function(e){$('status').textContent='❌ '+(e.message||e);$('status').style.color='#ff6b6b'});
+init().catch(function(e){
+  $('status').textContent='❌ '+(e.message||e);
+  $('status').style.color='#ff6b6b';
+});
 </script>
 </body>
 </html>
