@@ -8,7 +8,7 @@
 <title>扫码测试</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;overflow:hidden;background:#000;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
 #reader{width:100%;height:100%}
 #reader video{width:100%!important;height:100%!important;object-fit:cover!important}
 #status{position:fixed;top:50px;left:0;right:0;z-index:99;text-align:center;font-size:14px;color:#5ad8a6;text-shadow:0 1px 4px rgba(0,0,0,.6);pointer-events:none}
@@ -28,12 +28,12 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;-webkit-tap-hig
 <button id="btnFile">🖼️</button>
 </div>
 
-<script type="module">
-// ★ 直接使用 the-qr-scanner.com 的 html5-qrcode 代码（完全相同）
-import {Html5Qrcode} from './_qrcode.js';
-
-let scanner=null, facingBack=true, active=false, track=null, flash=false;
-const $=id=>document.getElementById(id);
+<!-- 原版 html5-qrcode — 补了 window 导出，普通 script 加载 -->
+<script src="_qrcode.js"></script>
+<script>
+var Html5Qrcode = window.Html5Qrcode;
+var scanner=null, facingBack=true, active=false, track=null, flash=false;
+var $=function(id){return document.getElementById(id)};
 
 async function stop(){
   if(scanner){try{if(scanner.getState()===2)await scanner.stop()}catch(e){}try{scanner.clear()}catch(e){}scanner=null}
@@ -47,19 +47,19 @@ async function start(){
   await scanner.start(
     {facingMode:facingBack?'environment':'user'},
     {fps:5,qrbox:{width:250,height:250},aspectRatio:1,disableFlip:false},
-    text=>{if(!active)return;active=false;$('result').style.display='block';$('result').innerHTML='✅ <b>'+text+'</b>';$('status').textContent='识别成功!';setTimeout(()=>{$('result').style.display='none';start()},3000)},
-    ()=>{}
+    function(text){if(!active)return;active=false;$('result').style.display='block';$('result').innerHTML='✅ <b>'+text+'</b>';$('status').textContent='识别成功!';setTimeout(function(){$('result').style.display='none';start()},3000)},
+    function(){}
   );
   active=true;
-  try{track=$('reader').querySelector('video').srcObject?.getVideoTracks()[0]||null}catch(e){}
-  $('btnFlash').style.display=track&&('torch'in(track.getCapabilities?.()||{}))?'':'none';
+  try{track=$('reader').querySelector('video').srcObject.getVideoTracks()[0]||null}catch(e){}
+  $('btnFlash').style.display=track&&('torch'in(track.getCapabilities()))?'':'none';
   $('status').textContent='⚡ 对准二维码';$('status').style.color='#5ad8a6';
 }
 
-$('btnCam').onclick=async()=>{facingBack=!facingBack;$('btnFlash').style.display='none';$('result').style.display='none';$('status').textContent='切换…';$('status').style.color='#aaa';await start()};
-$('btnFlash').onclick=()=>{if(!track)return;flash=!flash;try{track.applyConstraints({advanced:[{torch:flash}]});$('btnFlash').textContent=flash?'🔦':'💡'}catch(e){}};
-$('btnFile').onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='image/*';i.onchange=e=>{const f=e.target.files[0];if(!f)return;$('status').textContent='解析…';const r=new Html5Qrcode('reader');r.scanFile(f,false).then(t=>{$('result').style.display='block';$('result').innerHTML='✅ <b>'+t+'</b>';r.clear()}).catch(()=>{$('result').style.display='block';$('result').innerHTML='❌ 未识别';r.clear()})};i.click()};
-start().catch(e=>{$('status').textContent='❌ '+(e.message||'错误');$('status').style.color='#ff6b6b'});
+$('btnCam').onclick=async function(){facingBack=!facingBack;$('btnFlash').style.display='none';$('result').style.display='none';$('status').textContent='切换…';await start()};
+$('btnFlash').onclick=function(){if(!track)return;flash=!flash;try{track.applyConstraints({advanced:[{torch:flash}]});$('btnFlash').textContent=flash?'🔦':'💡'}catch(e){}};
+$('btnFile').onclick=function(){var i=document.createElement('input');i.type='file';i.accept='image/*';i.onchange=function(e){var f=e.target.files[0];if(!f)return;$('status').textContent='解析…';var r=new Html5Qrcode('reader');r.scanFile(f,false).then(function(t){$('result').style.display='block';$('result').innerHTML='✅ <b>'+t+'</b>';r.clear()}).catch(function(){$('result').style.display='block';$('result').innerHTML='❌ 未识别';r.clear()})};i.click()};
+start().catch(function(e){$('status').textContent='❌ '+(e.message||'错误');$('status').style.color='#ff6b6b'});
 </script>
 </body>
 </html>
