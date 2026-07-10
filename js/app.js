@@ -1,5 +1,5 @@
 /* ── 物居 PWA — Main Application ── */
-const APP_VERSION = 'v53';
+const APP_VERSION = 'v56';
 
 // ── Utilities ──
 function htmlEscape(str) {
