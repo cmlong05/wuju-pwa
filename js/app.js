@@ -1,6 +1,4 @@
 /* ── 物居 PWA — Main Application ── */
-const APP_VERSION = 'v56';
-
 // ── Utilities ──
 function htmlEscape(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -141,7 +139,7 @@ async function render() {
   header.className = '';
 
   if (state.screen === 'tabs') {
-    titleEl.innerHTML = '物居 <span style="font-size:11px;color:var(--text-tertiary);font-weight:400">' + APP_VERSION + '</span>';
+    titleEl.innerHTML = '物居';
     updateTabBar();
     // Set action button based on tab
     actionBtn.style.display = (state.tab === 'alerts' || state.tab === 'scan') ? 'none' : 'block';
