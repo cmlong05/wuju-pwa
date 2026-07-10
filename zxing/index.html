@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>ZXing 扫码测试</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
+#video{width:100%;height:100%;object-fit:cover}
+#status{position:fixed;top:50px;left:0;right:0;z-index:99;text-align:center;font-size:14px;color:#5ad8a6;text-shadow:0 1px 4px rgba(0,0,0,.6);pointer-events:none}
+#result{position:fixed;bottom:100px;left:16px;right:16px;z-index:99;background:rgba(0,0,0,.7);color:#5ad8a6;padding:12px 16px;border-radius:10px;text-align:center;font-size:15px;display:none;word-break:break-all}
+#controls{position:fixed;bottom:50px;left:50%;transform:translateX(-50%);z-index:99;display:flex;gap:16px}
+#controls button{width:48px;height:48px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:20px;cursor:pointer}
+#controls button:active{background:rgba(255,255,255,.3)}
+</style>
+</head>
+<body>
+
+<video id="video" playsinline muted autoplay></video>
+<div id="status">启动中…</div>
+<div id="result"></div>
+<div id="controls">
+<button id="btnCam">🔄</button>
+<button id="btnFlash">💡</button>
+<button id="btnFile">🖼️</button>
+</div>
+
+<script src="zxing-library.min.js"></script>
+<script src="zxing-browser.min.js"></script>
+<script>
+var $=function(id){return document.getElementById(id)};
+var reader, controls, stream, track, flash=false, facingBack=true, active=true;
+
+async function init(){
+  try{
+    reader = new ZXing.BrowserMultiFormatReader();
+    controls = await reader.listVideoInputDevices();
+    await start();
+  }catch(e){
+    $('status').textContent='❌ '+(e.message||e);
+  }
+}
+
+async function start(){
+  if(!reader) return;
+  $('result').style.display='none';
+  $('btnFlash').style.display='none';
+  
+  // stop previous
+  reader.reset();
+  
+  // pick camera
+  var deviceId;
+  if(controls && controls.length){
+    // prefer back camera
+    var back = controls.find(function(d){return /back|rear|environment/i.test(d.label||'')});
+    deviceId = back ? back.deviceId : (facingBack ? controls[0].deviceId : null);
+    if(!facingBack){
+      var front = controls.find(function(d){return /front|user|face/i.test(d.label||'')});
+      deviceId = front ? front.deviceId : controls[0].deviceId;
+    }
+  }
+
+  var t0 = performance.now();
+
+  // decode from video device
+  var result = await reader.decodeFromVideoDevice(deviceId, 'video', function(result, err){
+    if(result && active){
+      active = false;
+      var dt = (performance.now()-t0).toFixed(0);
+      $('result').style.display='block';
+      $('result').innerHTML='✅ <b>'+result.text+'</b><br><small>'+dt+'ms</small>';
+      $('status').textContent='识别成功! ('+dt+'ms)';$('status').style.color='#5ad8a6';
+      setTimeout(function(){active=true;$('result').style.display='none';start()},3000);
+    }
+  });
+
+  // get stream for torch
+  try{
+    stream = document.querySelector('#video').srcObject;
+    track = stream ? stream.getVideoTracks()[0] : null;
+    $('btnFlash').style.display = track && ('torch' in (track.getCapabilities()||{})) ? '' : 'none';
+  }catch(e){}
+
+  $('status').textContent='⚡ ZXing — 对准条码';$('status').style.color='#5ad8a6';
+  active=true;
+}
+
+$('btnCam').onclick=function(){facingBack=!facingBack;$('result').style.display='none';$('btnFlash').style.display='none';$('status').textContent='切换…';start()};
+$('btnFlash').onclick=function(){if(!track)return;flash=!flash;try{track.applyConstraints({advanced:[{torch:flash}]});$('btnFlash').textContent=flash?'🔦':'💡'}catch(e){}};
+$('btnFile').onclick=function(){
+  var i=document.createElement('input');i.type='file';i.accept='image/*';
+  i.onchange=function(e){
+    var f=e.target.files[0];if(!f)return;
+    $('status').textContent='解析…';
+    var url=URL.createObjectURL(f);
+    reader.decodeFromImageUrl(url).then(function(r){
+      $('result').style.display='block';
+      $('result').innerHTML='✅ <b>'+r.text+'</b>';
+    }).catch(function(){
+      $('result').style.display='block';
+      $('result').innerHTML='❌ 未识别';
+    });
+  };
+  i.click();
+};
+
+init();
+</script>
+</body>
+</html>
