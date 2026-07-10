@@ -1408,72 +1408,92 @@ async function startJsQRScanner(onScan, overlay) {
     statusBar.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#5ad8a6">⚡ ZXing — 请对准条码</div>';
   }
 
+  // Video + canvas setup
   var video = document.createElement('video');
   video.setAttribute('playsinline', '');
   video.muted = true;
-  video.style.width = '100%';
-  video.style.height = '100%';
-  video.style.objectFit = 'cover';
-  video.style.borderRadius = '12px';
+  video.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:12px';
+  area.appendChild(video);
 
+  var canvas = document.createElement('canvas');
+  var ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  // Scan overlay
   var zoomBox = document.createElement('div');
   zoomBox.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:2px solid rgba(0,200,100,.7);border-radius:16px;pointer-events:none;box-shadow:0 0 0 2000px rgba(0,0,0,.35);z-index:10;animation:zoom-pulse 2s ease-in-out infinite;';
-  area.appendChild(video);
   area.appendChild(zoomBox);
 
+  // ZXing reader with hints
+  _zxingReader = new ZXing.BrowserMultiFormatReader();
+  var hints = new Map();
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+    ZXing.BarcodeFormat.QR_CODE,
+    ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+    ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39
+  ]);
+  hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+  _zxingReader.hints = hints;
+
+  var controls = await _zxingReader.listVideoInputDevices();
+  var deviceId = null;
+  if (controls && controls.length) {
+    var back = controls.find(function(d) { return /back|rear|environment/i.test(d.label || ''); });
+    deviceId = back ? back.deviceId : controls[0].deviceId;
+  }
+
+  var constraints = { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } };
+  if (deviceId) constraints.video.deviceId = { exact: deviceId };
+
+  var stream;
   try {
-    _zxingReader = new ZXing.BrowserMultiFormatReader();
-    var hints = new Map();
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-      ZXing.BarcodeFormat.QR_CODE,
-      ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
-      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39
-    ]);
-    _zxingReader.hints = hints;
-
-    var controls = await _zxingReader.listVideoInputDevices();
-    var deviceId = null;
-    if (controls && controls.length) {
-      var back = controls.find(function(d) { return /back|rear|environment/i.test(d.label || ''); });
-      deviceId = back ? back.deviceId : controls[0].deviceId;
-    }
-
-    var constraints = { video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } };
-    if (deviceId) constraints.video.deviceId = { exact: deviceId };
-
-    var stream = await navigator.mediaDevices.getUserMedia(constraints);
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
     try { await video.play(); } catch (_) {}
-    _torchStream = stream;
-    _setTorchStream(stream);
-
-    // Continuous decode loop
-    function scanLoop() {
-      if (!_zxingReader) return;
-      _zxingReader.decodeFromVideoElement(video).then(function(result) {
-        if (_zxingReader) {
-          _zxingReader.reset();
-          _zxingReader = null;
-        }
-        if (stream) { stream.getTracks().forEach(function(t) { t.stop(); }); }
-        overlay.remove();
-        onScan(result.text);
-      }).catch(function() {
-        if (_zxingReader) requestAnimationFrame(scanLoop);
-      });
-    }
-    requestAnimationFrame(scanLoop);
   } catch (e) {
     var errMsg = (e && e.message) || String(e);
-    if (area) {
-      area.innerHTML = '<div style="color:#fff;text-align:center;padding:30px">' +
-        '<div style="font-size:48px;margin-bottom:12px">📱</div>' +
-        '<div style="font-size:16px;margin-bottom:8px">无法启动摄像头</div>' +
-        '<div style="font-size:13px;color:#aaa;line-height:1.6">请点击下方按钮从相册选择条码/二维码图片</div>' +
-        '<div style="font-size:11px;color:#666;margin-top:8px">' + htmlEscape(errMsg.substring(0, 80)) + '</div>' +
-        '</div>';
+    area.innerHTML = '<div style="color:#fff;text-align:center;padding:30px">' +
+      '<div style="font-size:48px;margin-bottom:12px">📱</div>' +
+      '<div style="font-size:16px;margin-bottom:8px">无法启动摄像头</div>' +
+      '<div style="font-size:13px;color:#aaa;line-height:1.6">请点击下方按钮从相册选择条码/二维码图片</div>' +
+      '<div style="font-size:11px;color:#666;margin-top:8px">' + htmlEscape(errMsg.substring(0, 80)) + '</div>' +
+      '</div>';
+    return;
+  }
+
+  _torchStream = stream;
+  _setTorchStream(stream);
+
+  // Manual canvas decode loop — avoids decodeFromVideoElement iOS Safari issues
+  function scanFrame() {
+    if (!_zxingReader || !stream) return;
+    if (video.readyState < 2) { requestAnimationFrame(scanFrame); return; }
+
+    var vw = video.videoWidth, vh = video.videoHeight;
+    if (!vw || !vh) { requestAnimationFrame(scanFrame); return; }
+
+    if (canvas.width !== vw || canvas.height !== vh) {
+      canvas.width = vw;
+      canvas.height = vh;
+    }
+    ctx.drawImage(video, 0, 0, vw, vh);
+
+    try {
+      var src = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+      var bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));
+      var result = _zxingReader.decodeBitmap(bmp);
+
+      // Recognized!
+      _zxingReader.reset();
+      _zxingReader = null;
+      stream.getTracks().forEach(function(t) { t.stop(); });
+      overlay.remove();
+      onScan(result.text);
+    } catch(err) {
+      // NotFoundException — keep scanning
+      requestAnimationFrame(scanFrame);
     }
   }
+  requestAnimationFrame(scanFrame);
 }
 
 function stopScanner() {
@@ -1482,16 +1502,12 @@ function stopScanner() {
     try { _zxingReader.reset(); } catch(e) {}
     _zxingReader = null;
   }
-}
-function stopScanner() {
-  _torchStream = null;
-  _torchOn = false;
-  if (_nativeScanState) stopNativeScanner();
-  if (_zxingReader) {
-    try { _zxingReader.reset(); } catch(e) {}
-    _zxingReader = null;
+  if (_torchStream) {
+    try { _torchStream.getTracks().forEach(function(t) { t.stop(); }); } catch(e) {}
+    _torchStream = null;
   }
 }
+
 
 // 通用扫描入口 — 自动判断物品/容器
 async function startUniversalScan() {
