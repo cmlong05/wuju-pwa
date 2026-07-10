@@ -1,4 +1,4 @@
-const CACHE = 'wuju-v39';
+const CACHE = 'wuju-v40';
 const PRECACHE = [
   '/wuju-pwa/',
   '/wuju-pwa/index.html',
@@ -6,6 +6,7 @@ const PRECACHE = [
   '/wuju-pwa/js/dexie.min.js',
   '/wuju-pwa/js/db.js',
   '/wuju-pwa/js/app.js',
+  '/wuju-pwa/js/qr-scanner-worker.min.js',
   '/wuju-pwa/manifest.json'
 ];
 
