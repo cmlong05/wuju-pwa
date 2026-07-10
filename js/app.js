@@ -1203,8 +1203,7 @@ function showQRModal(type, id, name, savedCode) {
   document.head.appendChild(style);
 })();
 
-// ── QR 扫描 (双引擎: BarcodeDetector API 优先, html5-qrcode 降级) ──
-let _html5QrScanner = null;
+// ── QR 扫描 ──
 let _nativeScanState = null; // { video, canvas, stream, ctx, detector, stopped, frameCount }
 
 // Check if native BarcodeDetector API is ACTUALLY usable
@@ -1390,65 +1389,6 @@ function stopNativeScanner() {
   _nativeScanState = null;
 }
 
-// html5-qrcode fallback — pure-JS ZXing port for browsers without BarcodeDetector
-async function startHtml5Scanner(onScan, overlay) {
-  var area = document.getElementById('qr-reader');
-  if (!area) return;
-  area.style.position = '';
-  area.style.overflow = '';
-  area.innerHTML = '';
-
-  // Show fallback badge — preserve any error info from failed native scanner
-  var statusBar = document.getElementById('qr-status');
-  if (statusBar) {
-    statusBar.style.display = 'block';
-    var existing = statusBar.innerHTML;
-    if (existing && existing.indexOf('color:#ff6b6b') !== -1) {
-      // Keep the error, append fallback notice below
-      statusBar.innerHTML = existing + '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#f6bd16">⚠️ 兼容模式 — 识别稍慢，请保持稳定</div>';
-    } else {
-      statusBar.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#f6bd16">⚠️ 兼容模式 — 识别稍慢，请保持稳定</div>';
-    }
-  }
-
-  try {
-    _html5QrScanner = new Html5Qrcode('qr-reader');
-    // Use simple constraints — detailed width/height can cause iOS Safari to reject
-    // without showing permission prompt. BarcodeDetector native path uses detailed
-    // constraints for speed; html5-qrcode fallback stays simple for compatibility.
-    await _html5QrScanner.start(
-      { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 300, height: 200 } },
-      (decodedText) => {
-        stopScanner();
-        overlay.remove();
-        onScan(decodedText);
-      },
-      () => {} // ignore scan failures
-    );
-  } catch (e) {
-    if (area) {
-      var errName = (e && e.name) || '';
-      var errMsg = (e && e.message) || String(e);
-      var tip = '';
-      if (errName === 'NotAllowedError' || /permission|not\s*allowed/i.test(errMsg)) {
-        tip = '<div style="font-size:14px;color:#ffcc00;margin:8px 0">📵 摄像头权限被拒绝</div>' +
-          '<div style="font-size:13px;color:#aaa;line-height:1.6">请在手机<b>设置 → Safari → 相机</b>中<br>改为「允许」后刷新重试</div>';
-      } else if (errName === 'NotFoundError' || /not\s*found/i.test(errMsg)) {
-        tip = '<div style="font-size:14px;color:#ffcc00;margin:8px 0">📷 未检测到摄像头</div>' +
-          '<div style="font-size:13px;color:#aaa;line-height:1.6">设备可能没有后置摄像头<br>请用下方按钮从相册选择图片</div>';
-      } else {
-        tip = '<div style="font-size:13px;color:#aaa;line-height:1.6">请点击下方按钮<br>从相册选择条码/二维码图片</div>' +
-          '<div style="font-size:11px;color:#666;margin-top:8px">错误: ' + htmlEscape(errMsg.substring(0, 80)) + '</div>';
-      }
-      area.innerHTML = '<div style="color:#fff;text-align:center;padding:30px">' +
-        '<div style="font-size:48px;margin-bottom:12px">📱</div>' +
-        '<div style="font-size:16px;margin-bottom:8px">无法启动摄像头</div>' +
-        tip +
-        '</div>';
-    }
-  }
-}
 
 // ── QrScanner engine — battle-tested jsQR wrapper with built-in Worker ──
 let _qrScanner = null; // QrScanner instance
@@ -1459,7 +1399,7 @@ async function startJsQRScanner(onScan, overlay) {
 
   if (typeof QrScanner !== 'function') {
     area.innerHTML = '';
-    startHtml5Scanner(onScan, overlay);
+    startJsQRScanner(onScan, overlay);
     return;
   }
 
@@ -1529,7 +1469,7 @@ async function startJsQRScanner(onScan, overlay) {
   } catch(e) {
     if (_qrScanner) { _qrScanner.destroy(); _qrScanner = null; }
     area.innerHTML = '';
-    startHtml5Scanner(onScan, overlay);
+    startJsQRScanner(onScan, overlay);
   }
 }
 
@@ -1549,21 +1489,14 @@ async function showScanner(onScan, mode) {
 
   // File-based scanning (via upload)
   function doFileScan(file) {
-    // Create a hidden container for the file scanner
-    var fileContainer = document.createElement('div');
-    fileContainer.id = 'qr-file-scan-container';
-    fileContainer.style.display = 'none';
-    document.body.appendChild(fileContainer);
-    var reader = new Html5Qrcode('qr-file-scan-container');
-    reader.scanFile(file, false)
+    // Use QrScanner for static image scanning
+    QrScanner.scanImage(file, { returnDetailedScanResult: false })
       .then(decodedText => {
-        fileContainer.remove();
         stopScanner();
         overlay.remove();
         onScan(decodedText);
       })
       .catch(err => {
-        fileContainer.remove();
         var area = document.getElementById('qr-reader');
         if (area) {
           area.innerHTML = '<div style="color:#ff6b6b;text-align:center;padding:20px">❌ 未识别到条码或二维码<br><span style="font-size:13px;color:#aaa">请换一张清晰的图片重试</span></div>';
@@ -1624,10 +1557,6 @@ function stopScanner() {
   _torchOn = false;
   if (_nativeScanState) stopNativeScanner();
   if (_qrScanner) stopJsQRScanner();
-  if (_html5QrScanner) {
-    try { _html5QrScanner.stop().catch(() => {}); } catch(e) {}
-    _html5QrScanner = null;
-  }
 }
 
 // 通用扫描入口 — 自动判断物品/容器
