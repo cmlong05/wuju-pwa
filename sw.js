@@ -27,6 +27,12 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
+self.addEventListener('message', e => {
+  if (e.data === 'get-version') {
+    e.ports[0].postMessage(CACHE);
+  }
+});
+
 self.addEventListener('fetch', e => {
   // Network-first with timeout: try network for 3s, then fall back to cache
   e.respondWith(

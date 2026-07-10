@@ -140,6 +140,19 @@ async function render() {
 
   if (state.screen === 'tabs') {
     titleEl.innerHTML = '物居';
+    titleEl.style.cursor = 'pointer';
+    titleEl.onclick = function() {
+      navigator.serviceWorker.ready.then(function(reg) {
+        var mc = new MessageChannel();
+        mc.port1.onmessage = function(e) {
+          var v = e.data.replace('wuju-', '');
+          alert('物居 ' + v);
+        };
+        reg.active.postMessage('get-version', [mc.port2]);
+      }).catch(function() {
+        alert('物居（无法获取版本信息）');
+      });
+    };
     updateTabBar();
     // Set action button based on tab
     actionBtn.style.display = (state.tab === 'alerts' || state.tab === 'scan') ? 'none' : 'block';
