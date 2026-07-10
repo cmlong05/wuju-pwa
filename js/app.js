@@ -1484,6 +1484,8 @@ async function startJsQRScanner(onScan, overlay) {
       _zxingReader.reset();
       _zxingReader = null;
       stream.getTracks().forEach(function(t) { t.stop(); });
+      _torchStream = null;
+      _torchOn = false;
       overlay.remove();
       onScan(result.text);
     } catch(err) {
@@ -1542,7 +1544,7 @@ async function showScanner(onScan, mode) {
         htmlFor: 'qr-file-input'
       }, [h('span', {}, '🖼'), h('span', {}, '从相册选择条码/二维码图片')]),
       h('input', {
-        type: 'file', id: 'qr-file-input', accept: 'image/*', capture: 'environment',
+        type: 'file', id: 'qr-file-input', accept: 'image/*',
         style: 'display:none',
         onchange: function(e) { if (e.target.files[0]) doFileScan(e.target.files[0]); }
       })
