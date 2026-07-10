@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>ZXing 扫码测试</title>
+<title>ZXing 扫码</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;background:#000}
 #video{width:100%;height:100%;object-fit:cover}
-#status{position:fixed;top:50px;left:0;right:0;z-index:99;text-align:center;font-size:14px;color:#5ad8a6;text-shadow:0 1px 4px rgba(0,0,0,.6);pointer-events:none}
+#status{position:fixed;top:50px;left:0;right:0;z-index:99;text-align:center;font-size:14px;color:#5ad8a6;text-shadow:0 1px 4px rgba(0,0,0,.6);pointer-events:none;padding:0 16px}
 #result{position:fixed;bottom:100px;left:16px;right:16px;z-index:99;background:rgba(0,0,0,.7);color:#5ad8a6;padding:12px 16px;border-radius:10px;text-align:center;font-size:15px;display:none;word-break:break-all}
 #controls{position:fixed;bottom:50px;left:50%;transform:translateX(-50%);z-index:99;display:flex;gap:16px}
 #controls button{width:48px;height:48px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:20px;cursor:pointer}
@@ -18,7 +18,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 </style>
 </head>
 <body>
-
 <video id="video" playsinline muted autoplay></video>
 <div id="status">启动中…</div>
 <div id="result"></div>
@@ -32,64 +31,90 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 <script src="zxing-browser.min.js"></script>
 <script>
 var $=function(id){return document.getElementById(id)};
-var reader, controls, stream, track, flash=false, facingBack=true, active=true;
+var reader, stream, track, flash=false, facingBack=true, scanStart=0, scanTimer=null;
+var videoEl = $('video');
 
 async function init(){
-  try{
-    reader = new ZXing.BrowserMultiFormatReader();
-    controls = await reader.listVideoInputDevices();
-    await start();
-  }catch(e){
-    $('status').textContent='❌ '+(e.message||e);
-  }
+  reader = new ZXing.BrowserMultiFormatReader();
+  // Set hints for faster QR detection
+  var hints = new Map();
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
+  reader.hints = hints;
+  await start();
 }
 
 async function start(){
-  if(!reader) return;
-  $('result').style.display='none';
-  $('btnFlash').style.display='none';
-  
-  // stop previous
+  $('result').style.display='none';$('btnFlash').style.display='none';
+  $('status').textContent='启动摄像头…';$('status').style.color='#fff';
+
+  // Stop any existing scan
+  if(scanTimer){clearInterval(scanTimer);scanTimer=null}
   reader.reset();
-  
-  // pick camera
-  var deviceId;
-  if(controls && controls.length){
-    // prefer back camera
-    var back = controls.find(function(d){return /back|rear|environment/i.test(d.label||'')});
-    deviceId = back ? back.deviceId : (facingBack ? controls[0].deviceId : null);
-    if(!facingBack){
-      var front = controls.find(function(d){return /front|user|face/i.test(d.label||'')});
-      deviceId = front ? front.deviceId : controls[0].deviceId;
-    }
-  }
 
-  var t0 = performance.now();
+  // Get camera stream manually for better control
+  if(stream){stream.getTracks().forEach(function(t){t.stop()});stream=null}
 
-  // decode from video device
-  var result = await reader.decodeFromVideoDevice(deviceId, 'video', function(result, err){
-    if(result && active){
-      active = false;
-      var dt = (performance.now()-t0).toFixed(0);
-      $('result').style.display='block';
-      $('result').innerHTML='✅ <b>'+result.text+'</b><br><small>'+dt+'ms</small>';
-      $('status').textContent='识别成功! ('+dt+'ms)';$('status').style.color='#5ad8a6';
-      setTimeout(function(){active=true;$('result').style.display='none';start()},3000);
-    }
-  });
-
-  // get stream for torch
+  var deviceId = null;
   try{
-    stream = document.querySelector('#video').srcObject;
-    track = stream ? stream.getVideoTracks()[0] : null;
-    $('btnFlash').style.display = track && ('torch' in (track.getCapabilities()||{})) ? '' : 'none';
+    var devices = await reader.listVideoInputDevices();
+    if(facingBack){
+      var back = devices.find(function(d){return /back|rear|environment/i.test(d.label||'')});
+      deviceId = back ? back.deviceId : (devices[0] ? devices[0].deviceId : null);
+    } else {
+      var front = devices.find(function(d){return /front|user/i.test(d.label||'')});
+      deviceId = front ? front.deviceId : (devices[0] ? devices[0].deviceId : null);
+    }
   }catch(e){}
 
-  $('status').textContent='⚡ ZXing — 对准条码';$('status').style.color='#5ad8a6';
-  active=true;
+  var constraints = {video: {facingMode: facingBack?'environment':'user',width:{ideal:1920},height:{ideal:1080}}};
+  if(deviceId) constraints.video.deviceId = {exact: deviceId};
+
+  try{
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    videoEl.srcObject = stream;
+    await videoEl.play();
+  }catch(e){
+    $('status').textContent='❌ 摄像头: '+(e.message||e);
+    $('status').style.color='#ff6b6b';
+    return;
+  }
+
+  track = stream.getVideoTracks()[0];
+  $('btnFlash').style.display = track && ('torch' in (track.getCapabilities()||{})) ? '' : 'none';
+
+  scanStart = performance.now();
+  $('status').textContent='⚡ ZXing — 对准条码';
+  $('status').style.color='#5ad8a6';
+
+  // Continuous scan loop
+  (function scanLoop(){
+    if(!stream) return;
+    reader.decodeFromVideoElement(videoEl).then(function(result){
+      var dt = (performance.now()-scanStart).toFixed(0);
+      $('result').style.display='block';
+      $('result').innerHTML='✅ <b>'+result.text+'</b><br><small>'+dt+'ms</small>';
+      $('status').textContent='识别成功! ('+dt+'ms)';
+      $('status').style.color='#5ad8a6';
+      // 3秒后重新开始
+      setTimeout(function(){
+        $('result').style.display='none';
+        scanStart = performance.now();
+        scanLoop();
+      }, 3000);
+    }).catch(function(err){
+      // Normal: no QR found yet
+      if(stream) scanTimer = setTimeout(scanLoop, 100);
+    });
+  })();
 }
 
-$('btnCam').onclick=function(){facingBack=!facingBack;$('result').style.display='none';$('btnFlash').style.display='none';$('status').textContent='切换…';start()};
+function stop(){
+  if(scanTimer){clearInterval(scanTimer);scanTimer=null}
+  if(stream){stream.getTracks().forEach(function(t){t.stop()});stream=null}
+  reader.reset();
+}
+
+$('btnCam').onclick=function(){facingBack=!facingBack;$('btnFlash').style.display='none';$('result').style.display='none';stop();start()};
 $('btnFlash').onclick=function(){if(!track)return;flash=!flash;try{track.applyConstraints({advanced:[{torch:flash}]});$('btnFlash').textContent=flash?'🔦':'💡'}catch(e){}};
 $('btnFile').onclick=function(){
   var i=document.createElement('input');i.type='file';i.accept='image/*';
@@ -98,17 +123,17 @@ $('btnFile').onclick=function(){
     $('status').textContent='解析…';
     var url=URL.createObjectURL(f);
     reader.decodeFromImageUrl(url).then(function(r){
-      $('result').style.display='block';
-      $('result').innerHTML='✅ <b>'+r.text+'</b>';
+      $('result').style.display='block';$('result').innerHTML='✅ <b>'+r.text+'</b>';
+      URL.revokeObjectURL(url);
     }).catch(function(){
-      $('result').style.display='block';
-      $('result').innerHTML='❌ 未识别';
+      $('result').style.display='block';$('result').innerHTML='❌ 未识别';
+      URL.revokeObjectURL(url);
     });
   };
   i.click();
 };
 
-init();
+init().catch(function(e){$('status').textContent='❌ '+(e.message||e);$('status').style.color='#ff6b6b'});
 </script>
 </body>
 </html>
