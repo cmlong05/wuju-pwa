@@ -9,51 +9,22 @@
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      background: #000;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #000; font-family: -apple-system, BlinkMacSystemFont, sans-serif;
       height: 100dvh; width: 100vw; overflow: hidden;
     }
-    #reader {
-      width: 100%; height: 100%;
-    }
-    #reader video {
-      object-fit: cover !important;
-    }
-    /* 隐藏库自带的扫描框，用自己的 */
-    #reader canvas,
-    #reader div:has(canvas) { display: none !important; }
+    #qr-video { width: 100%; height: 100%; }
+    #qr-video video { object-fit: cover !important; }
+    /* 隐藏库自带的内边框 */
+    #qr-video canvas { display: none !important; }
 
-    /* 扫描框 */
-    #scanbox {
-      position: fixed; top: 50%; left: 50%;
-      width: 250px; height: 250px;
-      transform: translate(-50%, -50%);
-      border: 2px solid rgba(0, 200, 100, 0.7);
-      border-radius: 16px;
-      box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.35);
-      pointer-events: none; z-index: 100;
-    }
-    #scanline {
-      position: absolute; left: 10%; width: 80%; height: 2px;
-      top: 50%;
-      background: linear-gradient(90deg, transparent, rgba(0,200,100,0.8), transparent);
-      animation: sweep 1.8s ease-in-out infinite;
-    }
-    @keyframes sweep {
-      0%, 100% { top: 20%; }
-      50% { top: 80%; }
-    }
-    /* 状态 */
     #status {
-      position: fixed; top: 50px; left: 0; right: 0;
-      z-index: 200; pointer-events: none;
+      position: fixed; top: 50px; left: 0; right: 0; z-index: 10;
       text-align: center; font-size: 14px; color: #5ad8a6;
       text-shadow: 0 1px 4px rgba(0,0,0,0.6);
     }
-    /* 按钮 */
     #controls {
       position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
-      z-index: 200; display: flex; gap: 16px;
+      z-index: 10; display: flex; gap: 16px;
     }
     #controls button {
       width: 48px; height: 48px; border-radius: 50%;
@@ -63,21 +34,18 @@
       display: flex; align-items: center; justify-content: center;
     }
     #controls button:active { background: rgba(255,255,255,0.3); }
-    /* 结果 */
     #result {
-      position: fixed; bottom: 110px; left: 16px; right: 16px;
-      z-index: 200; background: rgba(0,0,0,0.7);
-      color: #5ad8a6; padding: 12px 16px; border-radius: 10px;
+      position: fixed; bottom: 110px; left: 16px; right: 16px; z-index: 10;
+      background: rgba(0,0,0,0.7); color: #5ad8a6;
+      padding: 12px 16px; border-radius: 10px;
       text-align: center; font-size: 15px; display: none;
-      word-break: break-all;
-      backdrop-filter: blur(8px);
+      word-break: break-all; backdrop-filter: blur(8px);
     }
-    /* 加载 */
     #loading {
       position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      z-index: 300; color: #fff; font-size: 16px;
+      z-index: 20; color: #fff; font-size: 16px;
     }
-    #loading .spinner {
+    .spinner {
       display: inline-block; width: 24px; height: 24px;
       border: 3px solid rgba(255,255,255,0.3);
       border-top-color: #5ad8a6; border-radius: 50%;
@@ -89,13 +57,12 @@
 </head>
 <body>
 
-<div id="reader"></div>
-<div id="scanbox"><div id="scanline"></div></div>
-<div id="status"></div>
+<div id="qr-video"></div>
+<div id="status">⚡ 对准二维码</div>
 <div id="result"></div>
 <div id="controls">
   <button id="btn-camera" title="切换摄像头">🔄</button>
-  <button id="btn-flash" title="手电筒" style="display:none">💡</button>
+  <button id="btn-flash" title="手电筒">💡</button>
   <button id="btn-file" title="从相册选择">🖼️</button>
 </div>
 <div id="loading"><span class="spinner"></span>启动摄像头…</div>
@@ -108,9 +75,11 @@ var scanActive = false;
 var videoTrack = null;
 var flashOn = false;
 
+var $ = function(id) { return document.getElementById(id); };
+
 function showStatus(msg, color) {
-  document.getElementById('status').textContent = msg;
-  document.getElementById('status').style.color = color || '#5ad8a6';
+  $('status').textContent = msg;
+  $('status').style.color = color || '#5ad8a6';
 }
 
 function checkTorch() {
@@ -123,16 +92,13 @@ function toggleFlash() {
   flashOn = !flashOn;
   try {
     videoTrack.applyConstraints({ advanced: [{ torch: flashOn }] });
-    document.getElementById('btn-flash').textContent = flashOn ? '🔦' : '💡';
+    $('btn-flash').textContent = flashOn ? '🔦' : '💡';
   } catch(_) {}
 }
 
 async function stopScanner() {
   if (scanner) {
-    try {
-      var state = scanner.getState();
-      if (state === 2) await scanner.stop();
-    } catch(_) {}
+    try { var s = scanner.getState(); if (s === 2) await scanner.stop(); } catch(_) {}
     try { scanner.clear(); } catch(_) {}
     scanner = null;
   }
@@ -142,17 +108,16 @@ async function stopScanner() {
 }
 
 async function startScanner() {
-  document.getElementById('loading').style.display = '';
-  document.getElementById('result').style.display = 'none';
+  $('loading').style.display = '';
+  $('result').style.display = 'none';
+  $('btn-flash').style.display = 'none';
 
   await stopScanner();
+  scanner = new Html5Qrcode('qr-video');
 
-  scanner = new Html5Qrcode('reader');
-
-  var cameraId = facingBack ? { facingMode: 'environment' } : { facingMode: 'user' };
-
+  // 完全一致的配置
   await scanner.start(
-    cameraId,
+    { facingMode: facingBack ? 'environment' : 'user' },
     {
       fps: 5,
       qrbox: { width: 250, height: 250 },
@@ -167,30 +132,30 @@ async function startScanner() {
     function(decodedText) {
       if (!scanActive) return;
       scanActive = false;
-      var r = document.getElementById('result');
-      r.style.display = 'block';
-      r.innerHTML = '✅ <b>' + decodedText + '</b>';
-      r.style.color = '#5ad8a6';
+      $('result').style.display = 'block';
+      $('result').innerHTML = '✅ <b>' + decodedText + '</b>';
+      $('result').style.color = '#5ad8a6';
       showStatus('识别成功！');
-      setTimeout(function() { r.style.display = 'none'; startScanner(); }, 3000);
+      setTimeout(function() { $('result').style.display = 'none'; startScanner(); }, 3000);
     },
-    function() {}  // 静默
+    function() {}
   );
 
   scanActive = true;
 
-  // 获取 videoTrack
-  try { videoTrack = document.querySelector('#reader video').srcObject.getVideoTracks()[0] || null; } catch(_) {}
+  try {
+    videoTrack = document.querySelector('#qr-video video').srcObject.getVideoTracks()[0] || null;
+  } catch(_) {}
 
-  document.getElementById('btn-flash').style.display = checkTorch() ? '' : 'none';
-  document.getElementById('loading').style.display = 'none';
+  $('btn-flash').style.display = checkTorch() ? '' : 'none';
+  $('loading').style.display = 'none';
   showStatus('⚡ 对准二维码');
 }
 
 async function switchCamera() {
   facingBack = !facingBack;
-  document.getElementById('btn-flash').style.display = 'none';
-  document.getElementById('result').style.display = 'none';
+  $('btn-flash').style.display = 'none';
+  $('result').style.display = 'none';
   showStatus('切换摄像头…', '#aaa');
   await startScanner();
 }
@@ -203,32 +168,28 @@ function fileScan() {
     var file = e.target.files[0];
     if (!file) return;
     showStatus('解析图片…', '#f6bd16');
-    var r = new Html5Qrcode('reader');
-    r.scanFile(file, false)
-      .then(function(text) {
-        var el = document.getElementById('result');
-        el.style.display = 'block';
-        el.innerHTML = '✅ <b>' + text + '</b>';
-        el.style.color = '#5ad8a6';
-        r.clear();
-      })
-      .catch(function() {
-        var el = document.getElementById('result');
-        el.style.display = 'block';
-        el.innerHTML = '❌ 未识别到二维码';
-        el.style.color = '#ff6b6b';
-        r.clear();
-      });
+    var r = new Html5Qrcode('qr-video');
+    r.scanFile(file, false).then(function(text) {
+      $('result').style.display = 'block';
+      $('result').innerHTML = '✅ <b>' + text + '</b>';
+      $('result').style.color = '#5ad8a6';
+      r.clear();
+    }).catch(function() {
+      $('result').style.display = 'block';
+      $('result').innerHTML = '❌ 未识别';
+      $('result').style.color = '#ff6b6b';
+      r.clear();
+    });
   };
   input.click();
 }
 
-document.getElementById('btn-camera').addEventListener('click', switchCamera);
-document.getElementById('btn-flash').addEventListener('click', toggleFlash);
-document.getElementById('btn-file').addEventListener('click', fileScan);
+$('btn-camera').addEventListener('click', switchCamera);
+$('btn-flash').addEventListener('click', toggleFlash);
+$('btn-file').addEventListener('click', fileScan);
 
 startScanner().catch(function(err) {
-  document.getElementById('loading').style.display = 'none';
+  $('loading').style.display = 'none';
   showStatus('❌ ' + (err.message || '无法启动摄像头'), '#ff6b6b');
 });
 </script>
