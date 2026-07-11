@@ -63,6 +63,14 @@ db.version(5).stores({
   });
 });
 
+db.version(6).stores({
+  containers: 'id, name, parentId, sortOrder, qrCode',
+  items: 'id, name, category, containerId, expiryDate, addedDate, quantity, qrCode',
+  relations: 'id, sourceId, targetId, relationType',
+  categories: 'id, name, sortOrder',
+  tags: 'id, name, sortOrder'
+});
+
 // ── Category helpers ──
 const DEFAULT_CATEGORIES = [
   { name: '食品', icon: '🍎' },
@@ -251,17 +259,17 @@ export async function getItemsSorted(sortBy) {
 
 export async function getExpiredItems() {
   const now = Date.now();
-  return db.items.filter(i => i.expiryDate && i.expiryDate < now).toArray();
+  return db.items.where('expiryDate').below(now).toArray();
 }
 
 export async function getExpiringSoonItems(days = 7) {
   const now = Date.now();
   const threshold = now + days * 86400000;
-  return db.items.filter(i => i.expiryDate && i.expiryDate > now && i.expiryDate <= threshold).toArray();
+  return db.items.where('expiryDate').between(now, threshold, true, true).toArray();
 }
 
 export async function getLowStockItems(threshold = 1) {
-  return db.items.filter(i => i.quantity !== undefined && i.quantity !== null && i.quantity <= threshold).toArray();
+  return db.items.where('quantity').belowOrEqual(threshold).toArray();
 }
 
 // ── Relation helpers ──

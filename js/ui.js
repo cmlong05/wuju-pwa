@@ -257,9 +257,9 @@ export function showQRModal(type, id, name, savedCode) {
   // 进入扫码替换流程，扫描新的码并检查重复后写回数据库。
   async function doScan() {
     showScanner(async function(scannedText) {
-      var dupItem = await db.items.filter(function(i) { return i.qrCode === scannedText && i.id !== id; }).first();
+      var dupItem = await db.items.where('qrCode').equals(scannedText).filter(function(i) { return i.id !== id; }).first();
       if (dupItem) { alert('此条码已被物品「' + dupItem.name + '」使用'); return; }
-      var dupContainer = await db.containers.filter(function(c) { return c.qrCode === scannedText && c.id !== id; }).first();
+      var dupContainer = await db.containers.where('qrCode').equals(scannedText).filter(function(c) { return c.id !== id; }).first();
       if (dupContainer) { alert('此条码已被容器「' + dupContainer.name + '」使用'); return; }
 
       if (type === 'item') {

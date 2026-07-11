@@ -266,9 +266,9 @@ export async function startUniversalScan(onResolved) {
       }
     }
 
-    const item = await db.items.filter(i => i.qrCode === text).first();
+    const item = await db.items.where('qrCode').equals(text).first();
     if (item) { onResolved?.({ kind: 'item', itemId: item.id }); return; }
-    const container = await db.containers.filter(c => c.qrCode === text).first();
+    const container = await db.containers.where('qrCode').equals(text).first();
     if (container) { onResolved?.({ kind: 'container', containerId: container.id }); return; }
 
     alert('无法识别的条码/二维码:\n' + text + '\n\n请确认该条码已绑定到某个物品或容器');
@@ -314,8 +314,8 @@ export function startLocationScan(itemId, onDone) {
       const c = await db.containers.get(containerId);
       if (!c) { alert('未找到该容器'); return; }
     } else {
-      const c = await db.containers.filter(c => c.qrCode === text).first();
-      if (!c) { alert('未识别到容器条码/二维码:\n' + text + '\n\n请扫描已绑定到容器的条码'); return; }
+      const c = await db.containers.where('qrCode').equals(text).first();
+      if (!c) { alert('未识别到容器条码/二维码:\\n' + text + '\\n\\n请扫描已绑定到容器的条码'); return; }
       containerId = c.id;
     }
     await db.items.update(itemId, { containerId: containerId });
@@ -331,8 +331,8 @@ export function startContainerParentScan(containerId, onDone) {
     if (wuju && wuju.type === 'container') {
       parentId = wuju.id;
     } else {
-      const c = await db.containers.filter(c => c.qrCode === text).first();
-      if (!c) { alert('未识别到容器条码/二维码'); return; }
+      const c = await db.containers.where('qrCode').equals(text).first();
+      if (!c) { alert('未识别到容器条码/二维码:\\n' + text + '\\n\\n请扫描已绑定到容器的条码'); return; }
       parentId = c.id;
     }
     if (parentId === containerId) { alert('不能将自己设为父容器'); return; }
@@ -353,7 +353,7 @@ export function startContainerItemScan(containerId, onDone) {
     if (wuju && wuju.type === 'item') {
       itemId = wuju.id;
     } else {
-      const item = await db.items.filter(i => i.qrCode === text).first();
+      const item = await db.items.where('qrCode').equals(text).first();
       if (!item) { alert('未识别到物品条码/二维码'); return; }
       itemId = item.id;
     }
