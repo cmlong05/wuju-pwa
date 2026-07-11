@@ -11,20 +11,26 @@
 html,body{width:100%;height:100%;overflow:hidden;background:#000}
 #video{width:100%;height:100%;object-fit:cover}
 #status{position:fixed;top:50px;left:0;right:0;z-index:99;text-align:center;font-size:14px;color:#5ad8a6;text-shadow:0 1px 4px rgba(0,0,0,.6);pointer-events:none;padding:0 16px}
-#result{position:fixed;bottom:100px;left:16px;right:16px;z-index:99;background:rgba(0,0,0,.7);color:#5ad8a6;padding:12px 16px;border-radius:10px;text-align:center;font-size:15px;display:none;word-break:break-all}
 #controls{position:fixed;bottom:50px;left:50%;transform:translateX(-50%);z-index:99;display:flex;gap:16px}
 #controls button{width:48px;height:48px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:20px;cursor:pointer}
 #controls button:active{background:rgba(255,255,255,.3)}
+#closeBtn{position:fixed;top:16px;right:16px;z-index:99;padding:8px 16px;border-radius:8px;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:14px;cursor:pointer}
+#startOverlay{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:#000}
+#startBtn{padding:16px 48px;border-radius:12px;border:none;background:rgba(0,200,100,.8);color:#fff;font-size:18px;font-weight:600;cursor:pointer}
+#startBtn:active{background:rgba(0,200,100,1)}
 </style>
 </head>
 <body>
 <video id="video" playsinline muted autoplay></video>
 <div id="status">启动中…</div>
-<div id="result"></div>
+<button id="closeBtn" onclick="goBack()">✕ 关闭</button>
 <div id="controls">
 <button id="btnCam">🔄</button>
 <button id="btnFlash">💡</button>
 <button id="btnFile">🖼️</button>
+</div>
+<div id="startOverlay">
+<button id="startBtn">📷 点击开始扫描</button>
 </div>
 
 <script src="zxing-library.min.js"></script>
@@ -36,25 +42,39 @@ var videoEl = $('video');
 var canvas = document.createElement('canvas');
 var ctx = canvas.getContext('2d', {willReadFrequently: true});
 
-async function init(){
+function initReader(){
   reader = new ZXing.BrowserMultiFormatReader();
   var hints = new Map();
   hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
   hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
   reader.hints = hints;
-  await start();
 }
+
+function goBack(){
+  stop();
+  window.location.href = '/wuju-pwa/';
+}
+
+// Check if returning from a scan that was done on another page
+// (not needed here since we redirect back)
+
+$('startBtn').onclick = async function(){
+  $('startOverlay').style.display = 'none';
+  initReader();
+  try { await start(); } catch(e) {
+    $('status').textContent='❌ '+(e.message||e);
+    $('status').style.color='#ff6b6b';
+  }
+};
 
 async function start(){
   stopScan();
-  $('result').style.display='none';
   $('btnFlash').style.display='none';
   $('status').textContent='启动摄像头…';
   $('status').style.color='#fff';
 
   if(stream){stream.getTracks().forEach(function(t){t.stop()});stream=null}
 
-  // Build fallback chain: deviceId ideal → facingMode → just video
   var attempts = [];
   var targetMode = facingBack ? 'environment' : 'user';
 
@@ -127,15 +147,10 @@ function scanFrame(){
     var result = reader.decodeBitmap(bmp);
 
     var dt = (performance.now()-scanStart).toFixed(0);
-    $('result').style.display='block';
-    $('result').innerHTML='✅ <b>'+result.text+'</b><br><small>'+dt+'ms</small>';
-    $('status').textContent='识别成功! ('+dt+'ms)';
-    $('status').style.color='#5ad8a6';
-    setTimeout(function(){
-      $('result').style.display='none';
-      scanStart = performance.now();
-      if(stream) rafId = requestAnimationFrame(scanFrame);
-    }, 3000);
+    stop();
+    // Save result to localStorage and go back
+    try { localStorage.setItem('wuju-scan-result', result.text); } catch(e) {}
+    window.location.href = '/wuju-pwa/';
   } catch(err){
     if(stream) rafId = requestAnimationFrame(scanFrame);
   }
@@ -154,7 +169,6 @@ function stop(){
 $('btnCam').onclick=function(){
   facingBack=!facingBack;
   $('btnFlash').style.display='none';
-  $('result').style.display='none';
   stop();
   setTimeout(function(){ start(); }, 300);
 };
@@ -175,22 +189,18 @@ $('btnFile').onclick=function(){
     $('status').textContent='解析…';
     var url=URL.createObjectURL(f);
     reader.decodeFromImageUrl(url).then(function(r){
-      $('result').style.display='block';
-      $('result').innerHTML='✅ <b>'+r.text+'</b>';
       URL.revokeObjectURL(url);
+      stop();
+      try { localStorage.setItem('wuju-scan-result', r.text); } catch(e) {}
+      window.location.href = '/wuju-pwa/';
     }).catch(function(){
-      $('result').style.display='block';
-      $('result').innerHTML='❌ 未识别';
       URL.revokeObjectURL(url);
+      $('status').textContent='❌ 未识别';
+      $('status').style.color='#ff6b6b';
     });
   };
   i.click();
 };
-
-init().catch(function(e){
-  $('status').textContent='❌ '+(e.message||e);
-  $('status').style.color='#ff6b6b';
-});
 </script>
 </body>
 </html>

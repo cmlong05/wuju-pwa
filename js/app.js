@@ -845,11 +845,10 @@ async function renderContainerEdit(container, containerId, presetParentId) {
   form.appendChild(formGroup('颜色标签', colorGrid));
 
   // Parent
-  const roots = await getRootContainers();
+  const candidates = await getEligibleParentContainers(containerId);
   const parentSelect = h('select', { id: 'cedit-parent' });
   parentSelect.appendChild(h('option', { value: '', selected: (!isEdit && !presetParentId) || c?.parentId === '' ? 'selected' : undefined }, '顶层（无父容器）'));
-  for (const root of roots) {
-    if (root.id === containerId) continue; // can't be its own parent
+  for (const root of candidates) {
     parentSelect.appendChild(h('option', {
       value: root.id,
       selected: c?.parentId === root.id || (!isEdit && presetParentId === root.id) ? 'selected' : undefined
@@ -1254,8 +1253,12 @@ function _setTorchStream(stream) {
 }
 
 // ── ZXing engine — BrowserMultiFormatReader ──
-let _zxingReader = null; // ZXing BrowserMultiFormatReader instance
-
+let _zxingReader = null;
+let _keepStream = null;
+let _keepVideo = null;
+let _keepCanvas = null;
+let _keepCtx = null;
+let _activeVideo = null;
 async function startJsQRScanner(onScan, overlay) {
   var area = document.getElementById('qr-reader');
   if (!area) return;
@@ -1265,29 +1268,36 @@ async function startJsQRScanner(onScan, overlay) {
   area.style.overflow = 'hidden';
   area.innerHTML = '';
 
-  var statusBar = document.getElementById('qr-status');
-  if (statusBar) {
-    statusBar.style.display = 'block';
-    statusBar.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#5ad8a6">⚡ ZXing — 请对准条码</div>';
-  }
-
-  // Video + canvas setup
-  var video = document.createElement('video');
-  video.setAttribute('playsinline', '');
-  video.muted = true;
-  video.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:12px';
-  area.appendChild(video);
-
-  var canvas = document.createElement('canvas');
-  var ctx = canvas.getContext('2d', { willReadFrequently: true });
-
-  // Scan overlay
   var zoomBox = document.createElement('div');
   zoomBox.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:2px solid rgba(0,200,100,.7);border-radius:16px;pointer-events:none;box-shadow:0 0 0 2000px rgba(0,0,0,.35);z-index:10;animation:zoom-pulse 2s ease-in-out infinite;';
   area.appendChild(zoomBox);
 
-  // ZXing reader with hints
-  _zxingReader = new ZXing.BrowserMultiFormatReader();
+  var statusBar = document.getElementById('qr-status');
+  if (statusBar) {
+    statusBar.style.display = 'block';
+    statusBar.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#fff">📷 启动摄像头…</div>';
+  }
+
+  // Stream already obtained by showScanner — don't stop it here
+  if (_keepVideo) {
+    try { _keepVideo.srcObject = null; _keepVideo.remove(); } catch(e) {}
+    _keepVideo = null;
+  }
+
+  // Fresh video element each time
+  _keepVideo = document.createElement('video');
+  _keepVideo.playsInline = true;
+  _keepVideo.autoplay = true;
+  _keepVideo.muted = true;
+  _keepVideo.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;border-radius:12px;background:#000';
+  area.appendChild(_keepVideo);
+
+  if (!_keepCanvas) {
+    _keepCanvas = document.createElement('canvas');
+    _keepCtx = _keepCanvas.getContext('2d', { willReadFrequently: true });
+  }
+
+  if (!_zxingReader) _zxingReader = new ZXing.BrowserMultiFormatReader();
   var hints = new Map();
   hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
     ZXing.BarcodeFormat.QR_CODE,
@@ -1297,64 +1307,39 @@ async function startJsQRScanner(onScan, overlay) {
   hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
   _zxingReader.hints = hints;
 
-  var controls = await _zxingReader.listVideoInputDevices();
-  var deviceId = null;
-  if (controls && controls.length) {
-    var back = controls.find(function(d) { return /back|rear|environment/i.test(d.label || ''); });
-    deviceId = back ? back.deviceId : controls[0].deviceId;
+  _keepVideo.srcObject = _keepStream;
+  try { await _keepVideo.play(); } catch (_) {}
+
+  _torchStream = _keepStream;
+  _setTorchStream(_keepStream);
+
+  if (statusBar) {
+    statusBar.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#5ad8a6">⚡ ZXing — 请对准条码</div>';
   }
 
-  var constraints = { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } };
-  if (deviceId) constraints.video.deviceId = { exact: deviceId };
-
-  var stream;
-  try {
-    stream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = stream;
-    try { await video.play(); } catch (_) {}
-  } catch (e) {
-    var errMsg = (e && e.message) || String(e);
-    area.innerHTML = '<div style="color:#fff;text-align:center;padding:30px">' +
-      '<div style="font-size:48px;margin-bottom:12px">📱</div>' +
-      '<div style="font-size:16px;margin-bottom:8px">无法启动摄像头</div>' +
-      '<div style="font-size:13px;color:#aaa;line-height:1.6">请点击下方按钮从相册选择条码/二维码图片</div>' +
-      '<div style="font-size:11px;color:#666;margin-top:8px">' + htmlEscape(errMsg.substring(0, 80)) + '</div>' +
-      '</div>';
-    return;
-  }
-
-  _torchStream = stream;
-  _setTorchStream(stream);
-
-  // Manual canvas decode loop — avoids decodeFromVideoElement iOS Safari issues
   function scanFrame() {
-    if (!_zxingReader || !stream) return;
-    if (video.readyState < 2) { requestAnimationFrame(scanFrame); return; }
+    if (!_zxingReader) return;
+    if (_keepVideo.readyState < 2) { requestAnimationFrame(scanFrame); return; }
 
-    var vw = video.videoWidth, vh = video.videoHeight;
+    var vw = _keepVideo.videoWidth, vh = _keepVideo.videoHeight;
     if (!vw || !vh) { requestAnimationFrame(scanFrame); return; }
 
-    if (canvas.width !== vw || canvas.height !== vh) {
-      canvas.width = vw;
-      canvas.height = vh;
+    if (_keepCanvas.width !== vw || _keepCanvas.height !== vh) {
+      _keepCanvas.width = vw;
+      _keepCanvas.height = vh;
     }
-    ctx.drawImage(video, 0, 0, vw, vh);
+    _keepCtx.drawImage(_keepVideo, 0, 0, vw, vh);
 
     try {
-      var src = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+      var src = new ZXing.HTMLCanvasElementLuminanceSource(_keepCanvas);
       var bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));
       var result = _zxingReader.decodeBitmap(bmp);
 
-      // Recognized!
       _zxingReader.reset();
-      _zxingReader = null;
-      stream.getTracks().forEach(function(t) { t.stop(); });
-      _torchStream = null;
-      _torchOn = false;
+      stopScanner();
       overlay.remove();
       onScan(result.text);
     } catch(err) {
-      // NotFoundException — keep scanning
       requestAnimationFrame(scanFrame);
     }
   }
@@ -1364,15 +1349,31 @@ async function startJsQRScanner(onScan, overlay) {
 function stopScanner() {
   if (_zxingReader) {
     try { _zxingReader.reset(); } catch(e) {}
-    _zxingReader = null;
   }
-  if (_torchStream) {
-    try { _torchStream.getTracks().forEach(function(t) { t.stop(); }); } catch(e) {}
-    _torchStream = null;
+  if (_keepStream) {
+    try { _keepStream.getTracks().forEach(function(t) { t.stop(); }); } catch(e) {}
+    _keepStream = null;
   }
+  if (_keepVideo) {
+    try { _keepVideo.srcObject = null; } catch(e) {}
+  }
+  _torchStream = null;
+  _torchOn = false;
 }
 
 async function showScanner(onScan, mode) {
+  // CRITICAL: iOS PWA — getUserMedia must be the VERY FIRST async operation
+  // after the click handler to capture the user gesture
+  var streamPromise = null;
+  try {
+    streamPromise = navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+  } catch(e) {
+    streamPromise = Promise.reject(e);
+  }
+
   var canCamera = window.isSecureContext && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
   var title = mode === 'container' ? '扫描容器条码/二维码' : '扫描条码/二维码';
 
@@ -1393,15 +1394,10 @@ async function showScanner(onScan, mode) {
     });
   }
 
-  var overlay = h('div', { className: 'overlay', style: 'background:rgba(0,0,0,.9);flex-direction:column;gap:0' }, [
+  var overlay = h('div', { className: 'overlay', style: 'background:rgba(0,0,0,.85);flex-direction:column;justify-content:flex-start;align-items:stretch;gap:0' }, [
     h('div', { style: 'color:#fff;padding:16px 16px 4px;text-align:center;font-size:17px;font-weight:600;flex-shrink:0' }, title),
     h('div', { id: 'qr-status', style: 'flex-shrink:0;display:none' }),
-    h('button', {
-      id: 'torch-btn',
-      style: 'display:none;margin:4px auto;padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font-size:20px;cursor:pointer;flex-shrink:0',
-      onclick: function() { _toggleTorch(); }
-    }, '💡'),
-    h('div', { id: 'qr-reader', style: 'width:100%;max-width:400px;flex:1;display:flex;align-items:center;justify-content:center' }),
+    h('div', { id: 'qr-reader', style: 'width:100%;max-width:400px;flex:1;min-height:200px;position:relative;overflow:hidden' }),
     h('div', { style: 'padding:0 16px 8px;flex-shrink:0' }, [
       h('label', {
         style: 'display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:10px;border:1px dashed rgba(255,255,255,.4);color:#fff;font-size:15px;cursor:pointer;background:rgba(255,255,255,.05)',
@@ -1432,8 +1428,29 @@ async function showScanner(onScan, mode) {
     return;
   }
 
-  var sb = document.getElementById('qr-status');
-  if (sb) { sb.style.display = 'block'; sb.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#5ad8a6">⚡ ZXing — 请对准条码</div>'; }
+  // Await the pre-fetched stream
+  var stream = null;
+  try {
+    stream = await streamPromise;
+  } catch(e) {
+    var st = document.getElementById('qr-status');
+    if (st) {
+      st.style.display = 'block';
+      var errName = (e && e.name) || '';
+      st.innerHTML = errName === 'NotAllowedError'
+        ? '<div style="text-align:center;padding:8px 16px;font-size:13px;color:#ff6b6b">📵 请在设置中允许相机权限</div>'
+        : '<div style="text-align:center;padding:8px 16px;font-size:13px;color:#ff6b6b">❌ 无法启动摄像头</div>';
+    }
+    return;
+  }
+
+  if (!stream) {
+    var st2 = document.getElementById('qr-status');
+    if (st2) { st2.style.display = 'block'; st2.innerHTML = '<div style="text-align:center;padding:8px 16px;font-size:13px;color:#ff6b6b">❌ 无法启动摄像头</div>'; }
+    return;
+  }
+
+  _keepStream = stream;
   startJsQRScanner(onScan, overlay);
 }
 

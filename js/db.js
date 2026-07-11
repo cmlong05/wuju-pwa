@@ -175,6 +175,18 @@ async function getRootContainers() {
     .then(arr => arr.sort((a, b) => a.sortOrder - b.sortOrder));
 }
 
+async function getEligibleParentContainers(containerId) {
+  const allContainers = await db.containers.toArray();
+  if (!containerId) {
+    return allContainers.sort((a, b) => a.sortOrder - b.sortOrder);
+  }
+
+  const forbiddenIds = new Set(await getAllDescendantIds(containerId));
+  return allContainers
+    .filter(container => !forbiddenIds.has(container.id))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
 async function getContainerTree(containerId) {
   const c = await db.containers.get(containerId);
   if (!c) return null;
