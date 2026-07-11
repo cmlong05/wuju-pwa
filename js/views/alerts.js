@@ -12,54 +12,23 @@ export async function renderAlertView(container) {
 
   if (expired.length > 0) {
     hasAny = true;
-    const sec = h('div', { className: 'alert-section' });
-    sec.appendChild(h('div', { className: 'alert-header', style: 'color:var(--red)' }, ['❌', '已过期', h('span', { className: 'count' }, '(' + expired.length + ')')]));
-    const group = h('div', { className: 'card-row-group' });
-    expired.forEach(item => {
-      group.appendChild(h('div', { className: 'card-row', onclick: () => navigate('item-detail', { itemId: item.id }) }, [
-        h('span', { style: 'color:var(--red);margin-right:8px' }, '⚠️'),
-        h('span', { style: 'flex:1;font-weight:500' }, item.name),
-        h('span', { style: 'color:var(--red);font-size:13px' }, '已过期'),
-        h('span', { className: 'chevron' }, '›')
-      ]));
-    });
-    sec.appendChild(group);
-    container.appendChild(sec);
+    container.appendChild(renderAlertSection('❌已过期', 'var(--red)', expired,
+      item => ({ icon: '⚠️', label: '已过期', labelColor: 'var(--red)' })));
   }
 
   if (expiringSoon.length > 0) {
     hasAny = true;
-    const sec = h('div', { className: 'alert-section' });
-    sec.appendChild(h('div', { className: 'alert-header', style: 'color:var(--orange)' }, ['⏰', '即将过期', h('span', { className: 'count' }, '(' + expiringSoon.length + ')')]));
-    const group = h('div', { className: 'card-row-group' });
-    expiringSoon.forEach(item => {
-      const daysLeft = Math.ceil((item.expiryDate - Date.now()) / 86400000);
-      group.appendChild(h('div', { className: 'card-row', onclick: () => navigate('item-detail', { itemId: item.id }) }, [
-        h('span', { style: 'color:var(--orange);margin-right:8px' }, '⏳'),
-        h('span', { style: 'flex:1;font-weight:500' }, item.name),
-        h('span', { style: 'color:var(--orange);font-size:13px' }, daysLeft + '天后'),
-        h('span', { className: 'chevron' }, '›')
-      ]));
-    });
-    sec.appendChild(group);
-    container.appendChild(sec);
+    container.appendChild(renderAlertSection('⏰即将过期', 'var(--orange)', expiringSoon,
+      item => {
+        const daysLeft = Math.ceil((item.expiryDate - Date.now()) / 86400000);
+        return { icon: '⏳', label: daysLeft + '天后', labelColor: 'var(--orange)' };
+      }));
   }
 
   if (lowStock.length > 0) {
     hasAny = true;
-    const sec = h('div', { className: 'alert-section' });
-    sec.appendChild(h('div', { className: 'alert-header', style: 'color:#CC9900' }, ['📉', '低库存', h('span', { className: 'count' }, '(' + lowStock.length + ')')]));
-    const group = h('div', { className: 'card-row-group' });
-    lowStock.forEach(item => {
-      group.appendChild(h('div', { className: 'card-row', onclick: () => navigate('item-detail', { itemId: item.id }) }, [
-        h('span', { style: 'color:#CC9900;margin-right:8px' }, '📊'),
-        h('span', { style: 'flex:1;font-weight:500' }, item.name),
-        h('span', { style: 'font-size:13px;color:var(--text-secondary)' }, '仅剩 ' + (item.quantity || 0)),
-        h('span', { className: 'chevron' }, '›')
-      ]));
-    });
-    sec.appendChild(group);
-    container.appendChild(sec);
+    container.appendChild(renderAlertSection('📉低库存', '#CC9900', lowStock,
+      item => ({ icon: '📊', label: '仅剩 ' + (item.quantity || 0), labelColor: 'var(--text-secondary)' })));
   }
 
   if (!hasAny) {
@@ -69,4 +38,24 @@ export async function renderAlertView(container) {
       h('div', {}, '没有需要关注的物品提醒')
     ]));
   }
+}
+
+function renderAlertSection(title, color, items, getItemMeta) {
+  const sec = h('div', { className: 'alert-section' });
+  sec.appendChild(h('div', { className: 'alert-header', style: 'color:' + color }, [
+    title,
+    h('span', { className: 'count' }, '(' + items.length + ')')
+  ]));
+  const group = h('div', { className: 'card-row-group' });
+  items.forEach(item => {
+    const meta = getItemMeta(item);
+    group.appendChild(h('div', { className: 'card-row', onclick: () => navigate('item-detail', { itemId: item.id }) }, [
+      h('span', { style: 'color:' + color + ';margin-right:8px' }, meta.icon),
+      h('span', { style: 'flex:1;font-weight:500' }, item.name),
+      h('span', { style: 'font-size:13px;color:' + meta.labelColor }, meta.label),
+      h('span', { className: 'chevron' }, '›')
+    ]));
+  });
+  sec.appendChild(group);
+  return sec;
 }
