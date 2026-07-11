@@ -82,9 +82,18 @@ export async function renderItemList(container) {
     if (input && input !== document.activeElement) input.value = search;
     if (clearBtn) clearBtn.style.display = search ? '' : 'none';
   }
-  container.appendChild(h('div', { id: 'item-list-wrap' }));
+  let listWrap = document.getElementById('item-list-wrap');
+  if (!listWrap) {
+    listWrap = h('div', { id: 'item-list-wrap' });
+    container.appendChild(listWrap);
+  }
 
-  const chipRow = h('div', { className: 'chip-scroll' });
+  let chipRow = document.getElementById('item-chip-row');
+  if (chipRow) chipRow.innerHTML = '';
+  else {
+    chipRow = h('div', { id: 'item-chip-row', className: 'chip-scroll' });
+    container.appendChild(chipRow);
+  }
   chipRow.appendChild(h('button', {
     className: 'chip' + (category === null ? ' selected' : ''),
     onclick: () => { state.itemCategory = null; render(); }
@@ -102,7 +111,12 @@ export async function renderItemList(container) {
   }, '✏️'));
   container.appendChild(chipRow);
 
-  const tagRow = h('div', { className: 'chip-scroll', style: 'margin-top:4px' });
+  let tagRow = document.getElementById('item-tag-row');
+  if (tagRow) tagRow.innerHTML = '';
+  else {
+    tagRow = h('div', { id: 'item-tag-row', className: 'chip-scroll', style: 'margin-top:4px' });
+    container.appendChild(tagRow);
+  }
   tagRow.appendChild(h('span', { style: 'font-size:11px;color:var(--text-tertiary);padding:6px 4px;white-space:nowrap' }, '标签:'));
   tags.forEach(t => {
     const selected = state.itemTags.has(t.name);
@@ -123,7 +137,12 @@ export async function renderItemList(container) {
   }, '✏️'));
   container.appendChild(tagRow);
 
-  const seg = h('div', { className: 'segment' });
+  let seg = document.getElementById('item-seg');
+  if (seg) seg.innerHTML = '';
+  else {
+    seg = h('div', { id: 'item-seg', className: 'segment' });
+    container.appendChild(seg);
+  }
   ['name', 'date', 'expiry'].forEach(s => {
     seg.appendChild(h('button', {
       className: state.itemSort === s ? 'active' : '',
