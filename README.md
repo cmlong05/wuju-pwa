@@ -27,6 +27,17 @@
 | 部署 | Nginx Alpine on Docker，镜像 ~7MB |
 | 证书 | Let's Encrypt（Certbot auto-renew）|
 
+## 🏗 架构
+
+原单体 `app.js`（~1645 行）已拆分为职责清晰的模块化结构：
+
+- **`app.js`** — 薄入口，仅导入 `bootstrap` 并调用 `init()`
+- **`core/`** — 应用骨架：状态管理、导航栈、DOM 工具
+- **`views/`** — 页面渲染：物品、容器、提醒
+- **`scanner.js`** — 扫码能力：摄像头 + ZXing 解码循环
+- **`ui.js`** — 可复用 UI 构件：弹窗、表单、删除确认
+- **`bootstrap.js`** — 启动流程：加载配置、注册 SW、绑定事件、首次渲染
+
 ## 📁 项目结构
 
 ```
@@ -38,14 +49,23 @@ wuju-pwa/
 ├── Dockerfile              # Docker 构建（Nginx Alpine）
 ├── docker-compose.yml      # 一键部署
 ├── css/
-│   └── style.css           # iOS 风格样式（~18KB）
+│   └── style.css           # iOS 风格样式
 ├── js/
-│   ├── dexie.min.js        # IndexedDB 封装（Dexie.js, ~70KB）
-│   ├── qrcode.min.js       # QR 码生成（qrcodejs, ~30KB）
-│   ├── zxing-library.min.js  # ZXing 核心解码库（~336KB）
-│   ├── zxing-browser.min.js  # ZXing 浏览器封装（BrowserMultiFormatReader, ~395KB）
+│   ├── app.js              # 入口（3 行，仅导入 bootstrap）
+│   ├── bootstrap.js        # 启动流程（配置/事件/首次渲染）
 │   ├── db.js               # IndexedDB 数据层（Schema + 迁移）
-│   └── app.js              # 主应用逻辑（~70KB，路由/UI/扫码/CRUD）
+│   ├── scanner.js          # 扫码（摄像头 + ZXing 解码）
+│   ├── ui.js               # 可复用 UI（弹窗/表单/确认框）
+│   ├── core/
+│   │   ├── app-shell.js    # 应用骨架（状态/导航/渲染调度）
+│   │   └── dom.js          # DOM 工具
+│   ├── views/
+│   │   ├── items.js        # 物品列表/详情/编辑
+│   │   ├── containers.js   # 容器树/详情/编辑
+│   │   └── alerts.js       # 提醒页（过期/临期/低库存）
+│   ├── dexie.min.js        # IndexedDB 封装（Dexie.js）
+│   ├── zxing-library.min.js  # ZXing 核心解码库
+│   └── zxing-browser.min.js  # ZXing 浏览器封装
 ├── icons/                  # PWA 图标（192/512px）
 └── README.md
 ```
