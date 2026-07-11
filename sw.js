@@ -1,4 +1,4 @@
-const CACHE = 'wuju-v0.1.3';
+const CACHE = 'wuju-v0.1.4';
 const PRECACHE = [
   '/wuju-pwa/',
   '/wuju-pwa/index.html',
@@ -28,6 +28,10 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'skip-waiting') {
+    self.skipWaiting();
+    return;
+  }
   if (e.data === 'get-version') {
     e.ports[0].postMessage(CACHE);
   }

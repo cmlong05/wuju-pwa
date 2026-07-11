@@ -2,8 +2,12 @@
 
 // Force Service Worker update check on every page load
 if ('serviceWorker' in navigator) {
+  var _hadServiceWorkerController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.getRegistration().then(function(reg) {
     if (reg) reg.update();
+  });
+  navigator.serviceWorker.addEventListener('controllerchange', function() {
+    if (_hadServiceWorkerController) window.location.reload();
   });
 }
 
