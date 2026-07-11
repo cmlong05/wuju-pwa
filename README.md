@@ -47,7 +47,6 @@ wuju-pwa/
 │   ├── db.js               # IndexedDB 数据层（Schema + 迁移）
 │   └── app.js              # 主应用逻辑（~70KB，路由/UI/扫码/CRUD）
 ├── icons/                  # PWA 图标（192/512px）
-├── zxing/                  # ZXing 独立测试页（https://wuju.bumooby.com:8444/zxing/）
 └── README.md
 ```
 
