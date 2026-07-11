@@ -110,6 +110,8 @@ export async function render() {
     else if (state.tab === 'alerts' && renderers.renderAlertView) await renderers.renderAlertView(content);
     else if (state.tab === 'scan' && renderers.renderScanTab) await renderers.renderScanTab();
   } else {
+    titleEl.onclick = null;
+    titleEl.style.cursor = '';
     switch (state.screen) {
       case 'item-detail': await renderers.renderItemDetail?.(content, state.params.itemId); break;
       case 'item-edit': await renderers.renderItemEdit?.(content, state.params.itemId || null); break;
@@ -119,8 +121,6 @@ export async function render() {
     }
   }
 
-  titleEl.onclick = null;
-  titleEl.style.cursor = '';
   if (state.screen === 'item-detail') titleEl.textContent = '物品详情';
   else if (state.screen === 'item-edit') titleEl.textContent = state.params.itemId ? '编辑物品' : '添加物品';
   else if (state.screen === 'container-detail') titleEl.textContent = '容器详情';
