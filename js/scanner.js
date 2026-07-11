@@ -240,6 +240,7 @@ async function startJsQRScanner(onScan, overlay) {
 export function stopScanner() {
   if (_zxingReader) {
     try { _zxingReader.reset(); } catch(e) {}
+    _zxingReader = null;
   }
   if (_keepStream) {
     try { _keepStream.getTracks().forEach(function(t) { t.stop(); }); } catch(e) {}
