@@ -12,6 +12,7 @@ const CONTAINER_COLORS = [
   { label: '粉', hex: '#FF99C3' }, { label: '灰', hex: '#8C8C8C' }
 ];
 
+// 递归渲染容器树节点，并在展开时继续渲染子层级。
 async function renderContainerNodes(container, level) {
   const nodes = [];
   const totalItems = await getContainerTotalItems(container.id);
@@ -40,6 +41,7 @@ async function renderContainerNodes(container, level) {
   return nodes;
 }
 
+// 切换某个容器树节点的展开状态。
 function toggleContainerExpand(id) {
   if (state.expandedContainers.has(id)) {
     state.expandedContainers.delete(id);
@@ -49,6 +51,7 @@ function toggleContainerExpand(id) {
   render();
 }
 
+// 渲染空间 tab 的整棵容器树。
 export async function renderContainerTree(container) {
   const roots = await getRootContainers();
   if (roots.length === 0) {
@@ -66,6 +69,7 @@ export async function renderContainerTree(container) {
   container.appendChild(list);
 }
 
+// 渲染容器详情页，包括父子层级、物品和二维码操作。
 export async function renderContainerDetail(container, containerId) {
   const c = await db.containers.get(containerId);
   if (!c) { container.textContent = '容器不存在'; return; }
@@ -149,6 +153,7 @@ export async function renderContainerDetail(container, containerId) {
   }), style: 'color:var(--red)' }, '🗑'));
 }
 
+// 渲染容器编辑页，支持图标、颜色、父容器和备注。
 export async function renderContainerEdit(container, containerId, presetParentId) {
   const c = containerId ? await db.containers.get(containerId) : null;
   const isEdit = !!c;

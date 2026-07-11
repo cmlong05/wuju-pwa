@@ -10,6 +10,7 @@ let _keepVideo = null;
 let _keepCanvas = null;
 let _keepCtx = null;
 
+// 切换补光灯状态，优先使用相机轨道能力，避免不同机型重复实现。
 function _toggleTorch() {
   try {
     if (!_torchStream) return;
@@ -24,6 +25,7 @@ function _toggleTorch() {
   } catch(e) {}
 }
 
+// 记录当前摄像头流，并根据设备能力决定是否显示补光灯按钮。
 function _setTorchStream(stream) {
   _torchStream = stream;
   _torchOn = false;
@@ -36,6 +38,7 @@ function _setTorchStream(stream) {
   }
 }
 
+// 打开扫码浮层，优先复用已有的相机授权，再交给 ZXing 解码。
 export async function showScanner(onScan, mode) {
   // CRITICAL: iOS PWA — getUserMedia must be the VERY FIRST async operation
   // after the click handler to capture the user gesture
@@ -52,6 +55,7 @@ export async function showScanner(onScan, mode) {
   var canCamera = window.isSecureContext && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
   var title = mode === 'container' ? '扫描容器条码/二维码' : '扫描条码/二维码';
 
+  // 读取相册图片并尝试从静态图片里识别条码/二维码。
   function doFileScan(file) {
     var url = URL.createObjectURL(file);
     var r = _zxingReader || new ZXing.BrowserMultiFormatReader();
@@ -135,6 +139,8 @@ export async function showScanner(onScan, mode) {
   startJsQRScanner(onScan, overlay);
 }
 
+// 持续抓取视频帧并交给 ZXing 解码，直到识别到结果或用户关闭。
+// 在视频流上执行逐帧扫描，直到识别成功或中断。
 async function startJsQRScanner(onScan, overlay) {
   var area = document.getElementById('qr-reader');
   if (!area) return;
@@ -191,6 +197,7 @@ async function startJsQRScanner(onScan, overlay) {
     statusBar.innerHTML = '<div style="text-align:center;padding:0 16px 6px;font-size:12px;color:#5ad8a6">⚡ ZXing — 请对准条码</div>';
   }
 
+  // 每帧把视频内容压到 canvas 上，并交给 ZXing 做解码。
   function scanFrame() {
     if (!_zxingReader) return;
     if (_keepVideo.readyState < 2) { requestAnimationFrame(scanFrame); return; }
@@ -220,6 +227,7 @@ async function startJsQRScanner(onScan, overlay) {
   requestAnimationFrame(scanFrame);
 }
 
+// 停止扫码器并释放相机资源，避免后台仍占用摄像头。
 export function stopScanner() {
   if (_zxingReader) {
     try { _zxingReader.reset(); } catch(e) {}
@@ -235,6 +243,7 @@ export function stopScanner() {
   _torchOn = false;
 }
 
+// 统一扫描入口：识别内置 wuju 编码，或回退到绑定到条码的实体查找。
 export async function startUniversalScan(onResolved) {
   showScanner(async (text) => {
     const parts = text.split(':');
@@ -259,6 +268,7 @@ export async function startUniversalScan(onResolved) {
   }, 'auto');
 }
 
+// 扫描一个容器并把物品关联到该容器，适合从物品详情页发起。
 export function startAssociationScan(itemId, onDone) {
   showScanner(async (text) => {
     const parts = text.split(':');
@@ -287,6 +297,7 @@ export function startAssociationScan(itemId, onDone) {
   }, 'container');
 }
 
+// 扫描容器条码并直接写入物品位置，减少手动选择容器的步骤。
 export function startLocationScan(itemId, onDone) {
   showScanner(async (text) => {
     var containerId = '';
@@ -305,6 +316,7 @@ export function startLocationScan(itemId, onDone) {
   }, 'container');
 }
 
+// 扫描父容器，并在通过循环检查后更新容器层级关系。
 export function startContainerParentScan(containerId, onDone) {
   showScanner(async (text) => {
     var parentId = '';
@@ -326,6 +338,7 @@ export function startContainerParentScan(containerId, onDone) {
   }, 'container');
 }
 
+// 扫描后把物品移动到当前容器，适合在容器详情页快速补录物品。
 export function startContainerItemScan(containerId, onDone) {
   showScanner(async (text) => {
     var itemId = '';

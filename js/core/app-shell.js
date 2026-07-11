@@ -14,10 +14,12 @@ export const state = {
 
 let renderers = {};
 
+// 注入各页面渲染器，壳层只负责路由与调度，不关心页面实现细节。
 export function setRenderers(nextRenderers) {
   renderers = { ...nextRenderers };
 }
 
+// 进入指定页面，并把当前状态压入导航栈，便于返回。
 export function navigate(screen, params = {}) {
   if (state.screen === 'tabs') {
     state.stack = [{ screen: 'tabs', params: { tab: state.tab } }];
@@ -28,6 +30,7 @@ export function navigate(screen, params = {}) {
   render();
 }
 
+// 返回上一层页面；如果没有历史，则回到首页 tabs。
 export function goBack() {
   if (state.stack.length > 1) {
     state.stack.pop();
@@ -44,6 +47,7 @@ export function goBack() {
   render();
 }
 
+// 切换底部 tab，并清空页面级状态，避免残留筛选影响新页。
 export function switchTab(tab) {
   state.tab = tab;
   state.screen = 'tabs';
@@ -53,6 +57,7 @@ export function switchTab(tab) {
   render();
 }
 
+// 根据当前 state 选择要渲染的页面，并更新壳层标题和按钮。
 export async function render() {
   const header = $('#header');
   const content = $('#content');
@@ -123,6 +128,7 @@ export async function render() {
   else if (state.screen === 'relation-edit') titleEl.textContent = '关联物品';
 }
 
+// 更新底部 tab 的 active 样式，让当前页和视觉状态保持一致。
 export function updateTabBar() {
   const tabs = $$('#tabs .tab');
   tabs.forEach(t => t.classList.remove('active'));

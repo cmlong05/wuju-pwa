@@ -6,17 +6,20 @@ import { renderAlertView } from './views/alerts.js';
 import { startUniversalScan } from './scanner.js';
 import { seedSampleData } from './db.js';
 
+// 绑定底部 tab 点击事件，让切换入口保持在壳层，不散落到各页面里。
 function bindTabs() {
   document.querySelectorAll('#tabs .tab').forEach(tab => {
     tab.addEventListener('click', () => switchTab(tab.dataset.tab));
   });
 }
 
+// 绑定返回按钮，统一走导航栈的回退逻辑。
 function bindBackButton() {
   const back = document.querySelector('#header .back');
   if (back) back.addEventListener('click', goBack);
 }
 
+// 注册并刷新 Service Worker，保证更新后的资源尽快生效。
 function setupServiceWorkerRefresh() {
   if (!('serviceWorker' in navigator)) return;
   const hadController = !!navigator.serviceWorker.controller;
@@ -28,6 +31,7 @@ function setupServiceWorkerRefresh() {
   });
 }
 
+// 完成启动阶段的资源加载、事件绑定和首屏渲染。
 export async function init() {
   try {
     setupServiceWorkerRefresh();

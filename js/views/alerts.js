@@ -2,6 +2,7 @@ import { h } from '../core/dom.js';
 import { navigate } from '../core/app-shell.js';
 import { getExpiredItems, getExpiringSoonItems, getLowStockItems } from '../db.js';
 
+// 渲染提醒页，把过期、临期和低库存物品分组展示。
 export async function renderAlertView(container) {
   const expired = await getExpiredItems();
   const expiringSoon = await getExpiringSoonItems();

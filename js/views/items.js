@@ -4,6 +4,7 @@ import { db, getItemsSorted, getContainerPath, getItemRelations, deleteItemRelat
 import { catIcons, tagIcons, categories, tags, showQRModal, showDeleteDialog, sectionBlock, rowItem, rowLink, formGroup, toggleField, emptyView, showTagManager, showCategoryManager } from '../ui.js';
 import { startAssociationScan, startLocationScan } from '../scanner.js';
 
+// 处理物品列表的搜索、筛选与排序结果，并把最终列表渲染到容器里。
 async function renderItemRows() {
   const wrap = document.getElementById('item-list-wrap');
   if (!wrap) return;
@@ -49,10 +50,12 @@ async function renderItemRows() {
   wrap.appendChild(list);
 }
 
+// 重新刷新物品列表结果，不重建筛选控件本身。
 function refreshItemList() {
   renderItemRows();
 }
 
+// 渲染物品 tab 的筛选栏、标签栏和排序栏。
 export async function renderItemList(container) {
   const search = state.itemSearch;
   const category = state.itemCategory;
@@ -132,6 +135,7 @@ export async function renderItemList(container) {
   await renderItemRows();
 }
 
+// 渲染物品详情页，包括基础信息、位置、关联和备注。
 export async function renderItemDetail(container, itemId) {
   const item = await db.items.get(itemId);
   if (!item) { container.textContent = '物品不存在'; return; }
@@ -228,6 +232,7 @@ export async function renderItemDetail(container, itemId) {
   }), style: 'color:var(--red)' }, '🗑'));
 }
 
+// 渲染物品编辑页，负责创建和更新物品记录。
 export async function renderItemEdit(container, itemId) {
   const item = itemId ? await db.items.get(itemId) : null;
   const isEdit = !!item;
@@ -339,6 +344,7 @@ export async function renderItemEdit(container, itemId) {
   }}, '保存'));
 }
 
+// 渲染关联管理页，支持查看、删除和新增物品关联。
 export async function renderRelationEdit(container, itemId) {
   const item = await db.items.get(itemId);
   if (!item) { container.textContent = '物品不存在'; return; }
