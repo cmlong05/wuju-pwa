@@ -1,14 +1,14 @@
 /* ── 物居 PWA — IndexedDB Data Layer ── */
 
 // 兼容非 HTTPS 环境的 UUID 生成
-function uuid() {
+export function uuid() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
     const r = Math.random() * 16 | 0;
     return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
   });
 }
 
-const db = new Dexie('WujuDB');
+export const db = new Dexie('WujuDB');
 
 db.version(1).stores({
   containers: 'id, name, parentId, sortOrder',
@@ -87,7 +87,7 @@ async function seedDefaultCategories() {
   );
 }
 
-async function getCategories() {
+export async function getCategories() {
   const cats = await db.categories.orderBy('sortOrder').toArray();
   if (cats.length === 0) {
     // First run — seed defaults and return them
@@ -97,18 +97,18 @@ async function getCategories() {
   return cats;
 }
 
-async function addCategory(name, icon) {
+export async function addCategory(name, icon) {
   const maxSort = await db.categories.count();
   await db.categories.put({
     id: uuid(), name, icon, sortOrder: maxSort, createdAt: Date.now()
   });
 }
 
-async function updateCategory(id, name, icon) {
+export async function updateCategory(id, name, icon) {
   await db.categories.update(id, { name, icon });
 }
 
-async function deleteCategory(id) {
+export async function deleteCategory(id) {
   const cat = await db.categories.get(id);
   if (!cat) return;
   // Check if any items use this category
@@ -139,7 +139,7 @@ async function seedDefaultTags() {
   );
 }
 
-async function getTags() {
+export async function getTags() {
   const tags = await db.tags.orderBy('sortOrder').toArray();
   if (tags.length === 0) {
     await seedDefaultTags();
@@ -148,18 +148,18 @@ async function getTags() {
   return tags;
 }
 
-async function addTag(name, icon) {
+export async function addTag(name, icon) {
   const maxSort = await db.tags.count();
   await db.tags.put({
     id: uuid(), name, icon, sortOrder: maxSort, createdAt: Date.now()
   });
 }
 
-async function updateTag(id, name, icon) {
+export async function updateTag(id, name, icon) {
   await db.tags.update(id, { name, icon });
 }
 
-async function deleteTag(id) {
+export async function deleteTag(id) {
   const tag = await db.tags.get(id);
   if (!tag) return;
   const tagName = tag.name;
@@ -170,12 +170,12 @@ async function deleteTag(id) {
 }
 
 // ── Container helpers ──
-async function getRootContainers() {
+export async function getRootContainers() {
   return db.containers.where('parentId').equals('').toArray()
     .then(arr => arr.sort((a, b) => a.sortOrder - b.sortOrder));
 }
 
-async function getEligibleParentContainers(containerId) {
+export async function getEligibleParentContainers(containerId) {
   const allContainers = await db.containers.toArray();
   if (!containerId) {
     return allContainers.sort((a, b) => a.sortOrder - b.sortOrder);
@@ -187,7 +187,7 @@ async function getEligibleParentContainers(containerId) {
     .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-async function getContainerTree(containerId) {
+export async function getContainerTree(containerId) {
   const c = await db.containers.get(containerId);
   if (!c) return null;
   const children = await db.containers.where('parentId').equals(containerId).toArray();
@@ -195,7 +195,7 @@ async function getContainerTree(containerId) {
   return { ...c, children };
 }
 
-async function getContainerPath(containerId) {
+export async function getContainerPath(containerId) {
   const path = [];
   let currentId = containerId;
   while (currentId) {
@@ -207,7 +207,7 @@ async function getContainerPath(containerId) {
   return path;
 }
 
-async function getContainerTotalItems(containerId) {
+export async function getContainerTotalItems(containerId) {
   let count = await db.items.where('containerId').equals(containerId).count();
   const children = await db.containers.where('parentId').equals(containerId).toArray();
   for (const child of children) {
@@ -216,7 +216,7 @@ async function getContainerTotalItems(containerId) {
   return count;
 }
 
-async function getAllDescendantIds(containerId) {
+export async function getAllDescendantIds(containerId) {
   const ids = [containerId];
   const children = await db.containers.where('parentId').equals(containerId).toArray();
   for (const child of children) {
@@ -225,7 +225,7 @@ async function getAllDescendantIds(containerId) {
   return ids;
 }
 
-async function deleteContainerCascade(containerId) {
+export async function deleteContainerCascade(containerId) {
   const descIds = await getAllDescendantIds(containerId);
   // Nullify items referencing any of these containers
   await db.items.where('containerId').anyOf(descIds).modify({ containerId: '' });
@@ -234,12 +234,12 @@ async function deleteContainerCascade(containerId) {
 }
 
 // ── Item helpers ──
-async function getItemsByCategory(category) {
+export async function getItemsByCategory(category) {
   if (!category) return db.items.orderBy('name').toArray();
   return db.items.where('category').equals(category).sortBy('name');
 }
 
-async function getItemsSorted(sortBy) {
+export async function getItemsSorted(sortBy) {
   let items = await db.items.toArray();
   switch (sortBy) {
     case 'name': items.sort((a, b) => a.name.localeCompare(b.name, 'zh')); break;
@@ -249,23 +249,23 @@ async function getItemsSorted(sortBy) {
   return items;
 }
 
-async function getExpiredItems() {
+export async function getExpiredItems() {
   const now = Date.now();
   return db.items.filter(i => i.expiryDate && i.expiryDate < now).toArray();
 }
 
-async function getExpiringSoonItems(days = 7) {
+export async function getExpiringSoonItems(days = 7) {
   const now = Date.now();
   const threshold = now + days * 86400000;
   return db.items.filter(i => i.expiryDate && i.expiryDate > now && i.expiryDate <= threshold).toArray();
 }
 
-async function getLowStockItems(threshold = 1) {
+export async function getLowStockItems(threshold = 1) {
   return db.items.filter(i => i.quantity !== undefined && i.quantity !== null && i.quantity <= threshold).toArray();
 }
 
 // ── Relation helpers ──
-async function getItemRelations(itemId) {
+export async function getItemRelations(itemId) {
   const outgoing = await db.relations.where('sourceId').equals(itemId).toArray();
   const incoming = await db.relations.where('targetId').equals(itemId).toArray();
 
@@ -281,7 +281,7 @@ async function getItemRelations(itemId) {
   return result;
 }
 
-async function deleteItemRelations(itemId) {
+export async function deleteItemRelations(itemId) {
   const rels = await db.relations
     .where('sourceId').equals(itemId)
     .or('targetId').equals(itemId)
@@ -290,7 +290,7 @@ async function deleteItemRelations(itemId) {
 }
 
 // ── Seed sample data ──
-async function seedSampleData() {
+export async function seedSampleData() {
   const count = await db.containers.count();
   if (count > 0) return; // already seeded
 
