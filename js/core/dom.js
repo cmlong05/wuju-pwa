@@ -24,13 +24,7 @@ export function h(tag, attrs = {}, ...children) {
   children.forEach(append);
   return el;
 }
-
-// 基础 HTML 转义，避免把字符串直接塞进 innerHTML 时引入风险。
-export function htmlEscape(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-// 将时间戳格式化为 YYYY-MM-DD，方便表单和详情页统一显示。
+// 将时间戳格式化为
 export function formatDate(ts) {
   if (!ts) return '';
   const d = new Date(ts);
