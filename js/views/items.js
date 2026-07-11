@@ -319,12 +319,23 @@ export async function renderItemEdit(container, itemId) {
   const allContainers = await db.containers.orderBy('name').toArray();
   const contSelect = h('select', { id: 'edit-container' });
   contSelect.appendChild(h('option', { value: '', selected: !item?.containerId ? 'selected' : undefined }, '未归类'));
+  // 批量构建 path map，避免逐个 getContainerPath 的 N*D 次 DB 查询
+  const contMap = {};
+  allContainers.forEach(c => { contMap[c.id] = c; });
+  function buildNamePath(c) {
+    const parts = [c.name];
+    let pid = c.parentId;
+    while (pid && contMap[pid]) {
+      parts.unshift(contMap[pid].name);
+      pid = contMap[pid].parentId;
+    }
+    return parts.join(' > ');
+  }
   for (const c of allContainers) {
-    const path = await getContainerPath(c.id);
     contSelect.appendChild(h('option', {
       value: c.id,
       selected: item?.containerId === c.id ? 'selected' : undefined
-    }, path.map(p => p.name).join(' > ')));
+    }, buildNamePath(c)));
   }
   form.appendChild(formGroup('存放位置', contSelect));
 
