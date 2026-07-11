@@ -200,6 +200,7 @@ export async function renderContainerEdit(container, containerId, presetParentId
   CONTAINER_COLORS.forEach(({ label, hex }) => {
     colorGrid.appendChild(h('button', {
       className: 'color-btn' + ((c?.color || '#5B8FF9') === hex ? ' selected' : ''),
+      'data-color': hex,
       onclick: function() {
         colorGrid.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
         this.classList.add('selected');
@@ -236,7 +237,7 @@ export async function renderContainerEdit(container, containerId, presetParentId
     const iconEl = container.querySelector('.icon-btn.selected');
     const colorEl = container.querySelector('.color-btn.selected');
     const icon = iconEl ? iconEl.textContent : '📁';
-    const color = colorEl ? colorEl.querySelector('.circle').style.background : '#5B8FF9';
+    const color = colorEl ? colorEl.dataset.color : '#5B8FF9';
     const parentId = $('#cedit-parent').value;
     const notes = $('#cedit-notes').value;
 
