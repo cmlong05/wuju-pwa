@@ -1,4 +1,4 @@
-const CACHE = 'wuju-v0.1.4';
+const CACHE = 'wuju-v0.1.5';
 const PRECACHE = [
   '/wuju-pwa/',
   '/wuju-pwa/index.html',
@@ -6,6 +6,14 @@ const PRECACHE = [
   '/wuju-pwa/js/dexie.min.js',
   '/wuju-pwa/js/db.js',
   '/wuju-pwa/js/app.js',
+  '/wuju-pwa/js/bootstrap.js',
+  '/wuju-pwa/js/scanner.js',
+  '/wuju-pwa/js/ui.js',
+  '/wuju-pwa/js/core/dom.js',
+  '/wuju-pwa/js/core/app-shell.js',
+  '/wuju-pwa/js/views/items.js',
+  '/wuju-pwa/js/views/containers.js',
+  '/wuju-pwa/js/views/alerts.js',
   '/wuju-pwa/js/zxing-library.min.js',
   '/wuju-pwa/js/zxing-browser.min.js',
   '/wuju-pwa/manifest.json'
@@ -50,6 +58,8 @@ self.addEventListener('fetch', e => {
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error('network timeout')), 3000)
       )
-    ]).catch(() => caches.match(e.request))
+    ]).catch(() =>
+      caches.match(e.request).then(cached => cached || fetch(e.request))
+    )
   );
 });
