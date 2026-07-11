@@ -1,6 +1,15 @@
 import { db, uuid, getAllDescendantIds } from './db.js';
 import { h } from './core/dom.js';
 
+// 解析 wuju:type:id 格式的条码文本，返回 {type, id} 或 null
+export function parseWujuCode(text) {
+  const parts = text.split(':');
+  if (parts.length >= 3 && parts[0] === 'wuju') {
+    return { type: parts[1], id: parts.slice(2).join(':') };
+  }
+  return null;
+}
+
 // Supports torch (flashlight) toggle via MediaStreamTrack
 let _torchStream = null;
 let _torchOn = false;
@@ -246,16 +255,14 @@ export function stopScanner() {
 // 统一扫描入口：识别内置 wuju 编码，或回退到绑定到条码的实体查找。
 export async function startUniversalScan(onResolved) {
   showScanner(async (text) => {
-    const parts = text.split(':');
-    if (parts.length >= 3 && parts[0] === 'wuju') {
-      const type = parts[1];
-      const id = parts.slice(2).join(':');
-      if (type === 'item') {
-        const item = await db.items.get(id);
-        if (item) { onResolved?.({ kind: 'item', itemId: id }); return; }
-      } else if (type === 'container') {
-        const container = await db.containers.get(id);
-        if (container) { onResolved?.({ kind: 'container', containerId: id }); return; }
+    const wuju = parseWujuCode(text);
+    if (wuju) {
+      if (wuju.type === 'item') {
+        const item = await db.items.get(wuju.id);
+        if (item) { onResolved?.({ kind: 'item', itemId: wuju.id }); return; }
+      } else if (wuju.type === 'container') {
+        const container = await db.containers.get(wuju.id);
+        if (container) { onResolved?.({ kind: 'container', containerId: wuju.id }); return; }
       }
     }
 
@@ -271,12 +278,12 @@ export async function startUniversalScan(onResolved) {
 // 扫描一个容器并把物品关联到该容器，适合从物品详情页发起。
 export function startAssociationScan(itemId, onDone) {
   showScanner(async (text) => {
-    const parts = text.split(':');
-    if (parts.length < 3 || parts[0] !== 'wuju' || parts[1] !== 'container') {
+    const wuju = parseWujuCode(text);
+    if (!wuju || wuju.type !== 'container') {
       alert('请扫描容器条码/二维码');
       return;
     }
-    const containerId = parts.slice(2).join(':');
+    const containerId = wuju.id;
     const existing = await db.relations
       .where('sourceId').equals(itemId)
       .and(r => r.relationType === '属于' && r.targetId === containerId)
@@ -301,9 +308,9 @@ export function startAssociationScan(itemId, onDone) {
 export function startLocationScan(itemId, onDone) {
   showScanner(async (text) => {
     var containerId = '';
-    const parts = text.split(':');
-    if (parts.length >= 3 && parts[0] === 'wuju' && parts[1] === 'container') {
-      containerId = parts.slice(2).join(':');
+    const wuju = parseWujuCode(text);
+    if (wuju && wuju.type === 'container') {
+      containerId = wuju.id;
       const c = await db.containers.get(containerId);
       if (!c) { alert('未找到该容器'); return; }
     } else {
@@ -320,9 +327,9 @@ export function startLocationScan(itemId, onDone) {
 export function startContainerParentScan(containerId, onDone) {
   showScanner(async (text) => {
     var parentId = '';
-    const parts = text.split(':');
-    if (parts.length >= 3 && parts[0] === 'wuju' && parts[1] === 'container') {
-      parentId = parts.slice(2).join(':');
+    const wuju = parseWujuCode(text);
+    if (wuju && wuju.type === 'container') {
+      parentId = wuju.id;
     } else {
       const c = await db.containers.filter(c => c.qrCode === text).first();
       if (!c) { alert('未识别到容器条码/二维码'); return; }
@@ -342,9 +349,9 @@ export function startContainerParentScan(containerId, onDone) {
 export function startContainerItemScan(containerId, onDone) {
   showScanner(async (text) => {
     var itemId = '';
-    const parts = text.split(':');
-    if (parts.length >= 3 && parts[0] === 'wuju' && parts[1] === 'item') {
-      itemId = parts.slice(2).join(':');
+    const wuju = parseWujuCode(text);
+    if (wuju && wuju.type === 'item') {
+      itemId = wuju.id;
     } else {
       const item = await db.items.filter(i => i.qrCode === text).first();
       if (!item) { alert('未识别到物品条码/二维码'); return; }
