@@ -3,15 +3,19 @@ import { render } from './core/app-shell.js';
 import { db, getCategories, getTags, addCategory, deleteCategory, updateCategory, addTag, deleteTag, updateTag } from './db.js';
 import { showScanner } from './scanner.js';
 
-export const categories = [];
 export const catIcons = {};
-export const tags = [];
 export const tagIcons = {};
+
+const _categories = [];
+const _tags = [];
+
+export function getCategoriesList() { return _categories; }
+export function getTagsList() { return _tags; }
 
 // 从 IndexedDB 重新加载分类，并同步更新名称到图标的缓存映射。
 export async function loadCategories() {
   const fresh = await getCategories();
-  categories.splice(0, categories.length, ...fresh);
+  _categories.splice(0, _categories.length, ...fresh);
   for (const key of Object.keys(catIcons)) delete catIcons[key];
   fresh.forEach(c => { catIcons[c.name] = c.icon; });
 }
@@ -19,7 +23,7 @@ export async function loadCategories() {
 // 从 IndexedDB 重新加载标签，并同步更新名称到图标的缓存映射。
 export async function loadTags() {
   const fresh = await getTags();
-  tags.splice(0, tags.length, ...fresh);
+  _tags.splice(0, _tags.length, ...fresh);
   for (const key of Object.keys(tagIcons)) delete tagIcons[key];
   fresh.forEach(t => { tagIcons[t.name] = t.icon; });
 }
@@ -210,7 +214,7 @@ export function showEntityManager(config) {
 export function showCategoryManager() {
   showEntityManager({
     title: '管理分类', listId: 'cat-list', newNameId: 'cat-new-name',
-    items: categories, addFn: addCategory, deleteFn: deleteCategory,
+    items: getCategoriesList(), addFn: addCategory, deleteFn: deleteCategory,
     updateFn: updateCategory, reloadFn: loadCategories,
     defaultIcon: '📦', itemLabel: '分类', completeFn: render
   });
@@ -220,7 +224,7 @@ export function showCategoryManager() {
 export function showTagManager() {
   showEntityManager({
     title: '管理标签', listId: 'tag-list', newNameId: 'tag-new-name',
-    items: tags, addFn: addTag, deleteFn: deleteTag,
+    items: getTagsList(), addFn: addTag, deleteFn: deleteTag,
     updateFn: updateTag, reloadFn: loadTags,
     defaultIcon: '🏷', itemLabel: '标签', completeFn: render
   });

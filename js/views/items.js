@@ -1,7 +1,7 @@
 import { $, h, formatDate, isExpired, isExpiringSoon } from '../core/dom.js';
 import { state, navigate, goBack, render } from '../core/app-shell.js';
 import { db, getItemsSorted, getContainerPath, getItemRelations, deleteItemRelations, uuid } from '../db.js';
-import { catIcons, tagIcons, categories, tags, showQRModal, showDeleteDialog, sectionBlock, rowItem, rowLink, formGroup, toggleField, emptyView, showTagManager, showCategoryManager } from '../ui.js';
+import { catIcons, tagIcons, getCategoriesList, getTagsList, showQRModal, showDeleteDialog, sectionBlock, rowItem, rowLink, formGroup, toggleField, emptyView, showTagManager, showCategoryManager } from '../ui.js';
 import { startAssociationScan, startLocationScan } from '../scanner.js';
 
 // 处理物品列表的搜索、筛选与排序结果，并把最终列表渲染到容器里。
@@ -98,7 +98,7 @@ export async function renderItemList(container) {
     className: 'chip' + (category === null ? ' selected' : ''),
     onclick: () => { state.itemCategory = null; render(); }
   }, '全部'));
-  categories.forEach(c => {
+  getCategoriesList().forEach(c => {
     chipRow.appendChild(h('button', {
       className: 'chip' + (category === c.name ? ' selected' : ''),
       onclick: () => { state.itemCategory = (category === c.name ? null : c.name); render(); }
@@ -118,7 +118,7 @@ export async function renderItemList(container) {
     container.appendChild(tagRow);
   }
   tagRow.appendChild(h('span', { style: 'font-size:11px;color:var(--text-tertiary);padding:6px 4px;white-space:nowrap' }, '标签:'));
-  tags.forEach(t => {
+  getTagsList().forEach(t => {
     const selected = state.itemTags.has(t.name);
     tagRow.appendChild(h('button', {
       className: 'chip' + (selected ? ' selected' : ''),
@@ -288,14 +288,14 @@ export async function renderItemEdit(container, itemId) {
   form.appendChild(formGroup('', qtyRow));
 
   const catSelect = h('select', { id: 'edit-category' });
-  categories.forEach(c => {
+  getCategoriesList().forEach(c => {
     catSelect.appendChild(h('option', { value: c.name, selected: item?.category === c.name || (!item && c.name === '其他') ? 'selected' : undefined }, c.icon + ' ' + c.name));
   });
   form.appendChild(formGroup('分类', catSelect));
 
   const tagGrid = h('div', { id: 'edit-tags', style: 'display:flex;flex-wrap:wrap;gap:6px' });
   const itemTags = item?.tags || [];
-  tags.forEach(t => {
+  getTagsList().forEach(t => {
     const checked = itemTags.includes(t.name);
     const btn = h('button', {
       type: 'button',
