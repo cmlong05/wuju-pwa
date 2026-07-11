@@ -1158,7 +1158,17 @@ function showQRModal(type, id, name, savedCode) {
 
   function refreshQR() {
     var svgContainer = document.getElementById('qr-svg');
-    if (svgContainer) svgContainer.innerHTML = renderQRSVG();
+    if (svgContainer) {
+      var qrSvg = renderQRSVG();
+      svgContainer.innerHTML = '';
+      if (typeof qrSvg === 'string') {
+        svgContainer.innerHTML = qrSvg;
+      } else if (qrSvg && qrSvg.nodeType === 1) {
+        svgContainer.appendChild(qrSvg);
+      } else if (qrSvg && typeof qrSvg.outerHTML === 'string') {
+        svgContainer.innerHTML = qrSvg.outerHTML;
+      }
+    }
     var textEl = document.getElementById('qr-text');
     if (textEl) textEl.textContent = currentText;
   }
