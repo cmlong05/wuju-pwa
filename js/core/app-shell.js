@@ -37,8 +37,7 @@ export function goBack() {
     const prev = state.stack[state.stack.length - 1];
     state.screen = prev.screen;
     state.params = prev.params;
-    if (state.screen === 'tabs') state.tab = prev.params.tab || 'items';
-    state.stack.pop();
+    if (prev.screen === 'tabs') state.tab = prev.params.tab || 'items';
   } else {
     state.screen = 'tabs';
     state.params = {};
