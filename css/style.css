@@ -87,14 +87,14 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
 }
 
 #header .title { }
-#header .back { 
-  background: none; border: none; color: var(--tint); font-size: 15px; 
-  cursor: pointer; padding: 4px 8px; display: none;
+#header .back {
+  background: none; border: none; color: var(--tint); font-size: 24px;
+  cursor: pointer; padding: 4px 8px; display: none; line-height: 1;
 }
-#header .action { 
-  background: none; border: none; color: var(--tint); font-size: 15px; font-weight: 600;
+#header .action {
+  background: none; border: none; color: var(--tint); font-size: 20px; font-weight: 600;
   cursor: pointer; padding: 4px 8px;
-  display: flex; align-items: center; gap: 4px;
+  display: flex; align-items: center; gap: 4px; line-height: 1;
 }
 #header .action .add-btn {
   width: 32px; height: 32px; border-radius: 50%;
