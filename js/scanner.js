@@ -25,8 +25,6 @@ function _toggleTorch() {
     if (!_torchStream) return;
     var track = _torchStream.getVideoTracks()[0];
     if (!track) return;
-    var caps = track.getCapabilities();
-    if (!('torch' in caps)) return;
     _torchOn = !_torchOn;
     track.applyConstraints({ advanced: [{ torch: _torchOn }] });
     var btn = document.getElementById('torch-btn');
@@ -34,17 +32,12 @@ function _toggleTorch() {
   } catch(e) {}
 }
 
-// 记录当前摄像头流，并根据设备能力决定是否显示补光灯按钮。
+// 记录当前摄像头流，并显示手电筒按钮。
 function _setTorchStream(stream) {
   _torchStream = stream;
   _torchOn = false;
   var btn = document.getElementById('torch-btn');
-  if (btn) {
-    try {
-      var t = stream.getVideoTracks()[0];
-      btn.style.display = (t && 'torch' in t.getCapabilities()) ? '' : 'none';
-    } catch(e) { btn.style.display = 'none'; }
-  }
+  if (btn) btn.style.display = '';
 }
 
 // 打开扫码浮层，优先复用已有的相机授权，再交给 ZXing 解码。
