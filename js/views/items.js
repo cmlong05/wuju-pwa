@@ -242,13 +242,13 @@ export async function renderItemDetail(container, itemId) {
   const actionBtn = $('#header .action');
   actionBtn.style.display = 'block';
   actionBtn.innerHTML = '';
-  actionBtn.appendChild(h('span', { onclick: () => showQRModal('item', itemId, item.name, item.qrCode), style: 'margin-right:8px' }, '🔲'));
-  actionBtn.appendChild(h('span', { onclick: () => navigate('item-edit', { itemId }), style: 'margin-right:8px' }, '编辑'));
+  actionBtn.appendChild(h('span', { onclick: () => showQRModal('item', itemId, item.name, item.qrCode), style: 'margin-right:8px' }, '▣'));
+  actionBtn.appendChild(h('span', { onclick: () => navigate('item-edit', { itemId }), style: 'margin-right:8px' }, '✎'));
   actionBtn.appendChild(h('span', { onclick: () => showDeleteDialog('物品', item.name, async () => {
     await deleteItemRelations(itemId);
     await db.items.delete(itemId);
     goBack();
-  }), style: 'color:var(--red)' }, '🗑'));
+  }), style: 'color:var(--red)' }, '✕'));
 }
 
 // 渲染物品编辑页，负责创建和更新物品记录。
