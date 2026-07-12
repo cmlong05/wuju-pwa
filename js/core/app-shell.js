@@ -78,18 +78,18 @@ export async function render() {
   header.className = '';
 
   if (state.screen === 'tabs') {
-    titleEl.innerHTML = '物居';
+    titleEl.innerHTML = '居雅';
     titleEl.style.cursor = 'pointer';
     titleEl.onclick = function() {
       navigator.serviceWorker.ready.then(function(reg) {
         var mc = new MessageChannel();
         mc.port1.onmessage = function(e) {
           var v = e.data.replace('wuju-', '');
-          alert('物居 ' + v);
+          alert('居雅 ' + v);
         };
         reg.active.postMessage('get-version', [mc.port2]);
       }).catch(function() {
-        alert('物居（无法获取版本信息）');
+        alert('居雅（无法获取版本信息）');
       });
     };
 
@@ -140,7 +140,7 @@ const _bdEl = () => document.getElementById('swipe-backdrop');
 function _cacheBackdrop() {
   const content = $('#content');
   if (!content || !content.children.length) return;
-  let title = '物居';
+  let title = '居雅';
   if (state.screen === 'item-detail') title = '物品详情';
   else if (state.screen === 'item-edit') title = state.params.itemId ? '编辑物品' : '添加物品';
   else if (state.screen === 'container-detail') title = '容器详情';

@@ -1,4 +1,4 @@
-/* ── 物居 PWA — IndexedDB Data Layer ── */
+/* ── 居雅 PWA — IndexedDB Data Layer ── */
 
 // 兼容非 HTTPS 环境的 UUID 生成
 export function uuid() {
