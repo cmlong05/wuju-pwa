@@ -371,7 +371,7 @@ export async function renderItemEdit(container, itemId) {
       });
     }
     goBack();
-  }}, '保存'));
+  }}, '✅'));
 }
 
 // 渲染关联管理页，支持查看、删除和新增物品关联。

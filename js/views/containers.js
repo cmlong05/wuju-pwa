@@ -255,5 +255,5 @@ export async function renderContainerEdit(container, containerId, presetParentId
       });
     }
     goBack();
-  }}, '保存'));
+  }}, '✅'));
 }
