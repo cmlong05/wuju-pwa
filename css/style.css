@@ -57,7 +57,7 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   justify-content: space-between;
 }
 
-#header .title { flex: 1; text-align: center; }
+#header .title { }
 #header .back { 
   background: none; border: none; color: var(--tint); font-size: 15px; 
   cursor: pointer; padding: 4px 8px; display: none;
