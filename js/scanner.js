@@ -55,6 +55,7 @@ export async function showScanner(onScan, mode) {
   }
 
   var canCamera = window.isSecureContext && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
+  //扫面页面标题提示
   var title = mode === 'container' ? '扫描容器条码/二维码' : '扫描条码/二维码';
 
   // 读取相册图片并尝试从静态图片里识别条码/二维码。
@@ -79,27 +80,53 @@ export async function showScanner(onScan, mode) {
     });
   }
 
-  var overlay = h('div', { className: 'overlay', style: 'background:rgba(0,0,0,.85);flex-direction:column;justify-content:flex-start;align-items:stretch;gap:0' }, [
-    h('div', { style: 'color:#fff;padding:16px 16px 4px;text-align:center;font-size:17px;font-weight:600;flex-shrink:0' }, title),
+  // ========== 创建扫码浮层界面 ==========
+  // 使用 h() 函数构建完整的扫码界面 DOM 树
+  // 结构：全屏遮罩层，包含标题、扫描区域、相册选择、操作按钮
+  var overlay = h('div', { 
+    className: 'overlay', 
+    style: 'background:rgba(0,0,0,.85);flex-direction:column;justify-content:flex-start;align-items:stretch;gap:0' 
+  }, [
+    // 1. 标题区域：根据 mode 参数显示不同标题
+    h('div', { 
+      style: 'color:#fff;padding:16px 16px 4px;text-align:center;font-size:17px;font-weight:600;flex-shrink:0' 
+    }, title),
+    
+    // 2. 状态提示区域：默认隐藏，用于显示扫描状态信息
     h('div', { id: 'qr-status', style: 'flex-shrink:0;display:none' }),
-    h('div', { id: 'qr-reader', style: 'width:100%;max-width:400px;flex:1;min-height:200px;position:relative;overflow:hidden' }),
+    
+    // 3. 扫描预览区域：显示摄像头实时画面或图片解码结果
+    h('div', { 
+      id: 'qr-reader', 
+      style: 'width:100%;max-width:400px;flex:1;min-height:200px;position:relative;overflow:hidden' 
+    }),
+    
+    // 4. 相册选择区域：允许用户从相册上传图片进行解码
     h('div', { style: 'padding:0 16px 8px;flex-shrink:0' }, [
+      // 可见的选择按钮（label 关联隐藏的 file input）
       h('label', {
         style: 'display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:10px;border:1px dashed rgba(255,255,255,.4);color:#fff;font-size:15px;cursor:pointer;background:rgba(255,255,255,.05)',
         htmlFor: 'qr-file-input'
       }, [h('span', {}, '🖼'), h('span', {}, '从相册选择条码/二维码图片')]),
+      // 隐藏的文件选择器：仅接受图片类型，选择后调用 doFileScan() 解码
       h('input', {
-        type: 'file', id: 'qr-file-input', accept: 'image/*',
+        type: 'file', 
+        id: 'qr-file-input', 
+        accept: 'image/*',
         style: 'display:none',
         onchange: function(e) { if (e.target.files[0]) doFileScan(e.target.files[0]); }
       })
     ]),
+    
+    // 5. 操作按钮区域：手电筒开关 + 关闭按钮
     h('div', { style: 'margin:8px 16px 16px;flex-shrink:0;display:flex;gap:12px' }, [
+      // 手电筒按钮：调用 _toggleTorch() 切换补光灯状态
       h('button', {
         id: 'torch-btn',
         style: 'flex:1;padding:12px 24px;border-radius:8px;border:none;background:rgba(255,255,255,.2);color:#fff;font-size:15px;cursor:pointer',
         onclick: _toggleTorch
       }, '💡'),
+      // 关闭按钮：停止扫描并移除浮层
       h('button', {
         style: 'flex:1;padding:12px 24px;border-radius:8px;border:none;background:rgba(255,255,255,.2);color:#fff;font-size:15px;cursor:pointer',
         onclick: function() { stopScanner(); overlay.remove(); }

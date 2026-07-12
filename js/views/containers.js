@@ -104,8 +104,8 @@ export async function renderContainerDetail(container, containerId) {
 
   const children = await db.containers.where('parentId').equals(containerId).toArray();
   children.sort((a, b) => a.sortOrder - b.sortOrder);
+  const childRows = [];
   if (children.length > 0) {
-    const childRows = [];
     const childTotals = await Promise.all(children.map(child => getContainerTotalItems(child.id)));
     children.forEach((child, idx) => {
       childRows.push(h('div', { className: 'detail-row', onclick: () => navigate('container-detail', { containerId: child.id }), style: 'cursor:pointer' }, [
@@ -115,8 +115,11 @@ export async function renderContainerDetail(container, containerId) {
         h('span', { className: 'chevron' }, '›')
       ]));
     });
-    wrapper.appendChild(sectionBlock('子容器', childRows));
+  } else {
+    childRows.push(h('div', { className: 'detail-row', style: 'color:var(--text-secondary)' }, '此容器没有子容器'));
   }
+  childRows.push(h('div', { className: 'detail-row', onclick: () => navigate('container-edit', { parentId: containerId }), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, '➕ 添加子容器'));
+  wrapper.appendChild(sectionBlock('子容器', childRows));
 
   const items = await db.items.where('containerId').equals(containerId).toArray();
   if (items.length > 0) {
@@ -146,6 +149,7 @@ export async function renderContainerDetail(container, containerId) {
   actionBtn.style.display = 'block';
   actionBtn.innerHTML = '';
   actionBtn.appendChild(h('span', { onclick: () => showQRModal('container', c.id, c.name, c.qrCode), style: 'margin-right:8px' }, '🔲'));
+  actionBtn.appendChild(h('span', { onclick: () => navigate('container-edit', { parentId: containerId }), style: 'margin-right:8px' }, '➕ 子容器'));
   actionBtn.appendChild(h('span', { onclick: () => navigate('container-edit', { containerId: c.id, parentId: c.parentId }), style: 'margin-right:8px' }, '编辑'));
   actionBtn.appendChild(h('span', { onclick: () => showDeleteDialog('容器', c.name + '（子容器将被一并删除）', async () => {
     await deleteContainerCascade(containerId);
