@@ -280,7 +280,7 @@ export function showQRModal(type, id, name, savedCode) {
     h('div', { className: 'dialog', style: 'max-width:340px;text-align:center;position:relative' }, [
       h('button', {
         onclick: function() { overlay.remove(); },
-        style: 'position:absolute;top:8px;right:8px;width:28px;height:28px;border:none;background:transparent;font-size:18px;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:50%'
+        style: 'position:absolute;top:8px;right:8px;width:32px;height:32px;border:none;background:transparent;font-size:22px;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:50%'
       }, '✕'),
       h('div', { style: 'margin-bottom:12px' }, [
         h('div', { style: 'font-size:11px;color:var(--text-secondary);margin-bottom:4px' },
