@@ -19,13 +19,10 @@ function bindBackButton() {
   if (back) back.addEventListener('click', goBack);
 }
 
-// 注册并刷新 Service Worker，保证更新后的资源尽快生效。
+// 监听 SW 更新并自动刷新页面。
 function setupServiceWorkerRefresh() {
   if (!('serviceWorker' in navigator)) return;
   const hadController = !!navigator.serviceWorker.controller;
-  navigator.serviceWorker.getRegistration().then(function(reg) {
-    if (reg) reg.update();
-  });
   navigator.serviceWorker.addEventListener('controllerchange', function() {
     if (hadController) window.location.reload();
   });
@@ -59,7 +56,8 @@ export async function init() {
 
     if ('serviceWorker' in navigator) {
       try {
-        await navigator.serviceWorker.register('/wuju-pwa/sw.js');
+        var reg = await navigator.serviceWorker.register('/wuju-pwa/sw.js');
+        reg.update();
       } catch (e) { /* offline or no support */ }
     }
 

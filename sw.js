@@ -1,4 +1,4 @@
-const CACHE = 'wuju-v0.1.13';
+const CACHE = 'wuju-v0.1.14';
 const PRECACHE = [
   '/wuju-pwa/',
   '/wuju-pwa/index.html',
@@ -46,11 +46,11 @@ self.addEventListener('message', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Network-first with timeout: try network for 3s, then fall back to cache
+  // Network-first with no-cache bypass, timeout 3s fallback to SW cache
+  var req = new Request(e.request, { cache: 'no-cache' });
   e.respondWith(
     Promise.race([
-      fetch(e.request).then(response => {
-        // Update cache with fresh response for future offline use
+      fetch(req).then(response => {
         const cloned = response.clone();
         caches.open(CACHE).then(cache => cache.put(e.request, cloned));
         return response;
