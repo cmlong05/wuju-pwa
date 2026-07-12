@@ -21,6 +21,7 @@ export function setRenderers(nextRenderers) {
 
 // 进入指定页面，并把当前状态压入导航栈，便于返回。
 export function navigate(screen, params = {}) {
+  _cacheBackdrop();
   if (state.screen === 'tabs') {
     state.stack = [{ screen: 'tabs', params: { tab: state.tab } }];
   }
@@ -32,6 +33,7 @@ export function navigate(screen, params = {}) {
 
 // 返回上一层页面；如果没有历史，则回到首页 tabs。
 export function goBack() {
+  _popBackdrop();
   if (state.stack.length > 1) {
     state.stack.pop();
     const prev = state.stack[state.stack.length - 1];
@@ -53,6 +55,7 @@ export function switchTab(tab) {
   state.params = {};
   state.stack = [];
   state.expandedContainers = new Set();
+  _clearBackdropStack();
   render();
 }
 
@@ -125,6 +128,107 @@ export async function render() {
   else if (state.screen === 'container-detail') titleEl.textContent = '容器详情';
   else if (state.screen === 'container-edit') titleEl.textContent = state.params.containerId ? '编辑容器' : '新建容器';
   else if (state.screen === 'relation-edit') titleEl.textContent = '关联物品';
+}
+
+// ── 屏幕左边缘右滑返回 ──
+let _swipeBack = null;
+let _backdropStack = [];
+const _appEl = () => document.getElementById('app');
+const _bdEl = () => document.getElementById('swipe-backdrop');
+
+// 缓存当前页面的 innerHTML 到栈中，与 state.stack 保持同步。
+function _cacheBackdrop() {
+  const content = $('#content');
+  if (!content || !content.children.length) return;
+  let title = '物居';
+  if (state.screen === 'item-detail') title = '物品详情';
+  else if (state.screen === 'item-edit') title = state.params.itemId ? '编辑物品' : '添加物品';
+  else if (state.screen === 'container-detail') title = '容器详情';
+  else if (state.screen === 'container-edit') title = state.params.containerId ? '编辑容器' : '新建容器';
+  else if (state.screen === 'relation-edit') title = '关联物品';
+  _backdropStack.push({ title: title, body: content.innerHTML });
+}
+
+// 与 goBack 弹栈同步，弹出缓存栈顶。
+function _popBackdrop() {
+  if (_backdropStack.length > 0) _backdropStack.pop();
+}
+
+// 清空缓存栈（switchTab 时）。
+function _clearBackdropStack() {
+  _backdropStack = [];
+}
+
+// 将缓存栈顶写入 backdrop 并显示。
+function _showBackdrop() {
+  const bd = _bdEl();
+  if (!bd || _backdropStack.length === 0) return;
+  const cache = _backdropStack[_backdropStack.length - 1];
+  bd.querySelector('.bd-header').textContent = '‹ ' + cache.title;
+  bd.querySelector('.bd-body').innerHTML = cache.body.replace(/\s+id="[^"]*"/g, '');
+  bd.style.display = 'flex';
+}
+
+function _hideBackdrop() {
+  const bd = _bdEl();
+  if (bd) bd.style.display = 'none';
+}
+
+function _resetApp() {
+  const app = _appEl();
+  if (app) { app.style.transition = ''; app.style.transform = ''; }
+  _hideBackdrop();
+}
+
+export function initSwipeBack() {
+  const EDGE = 30;
+  const MIN_SWIPE = 80;
+
+  document.addEventListener('touchstart', function(e) {
+    if (state.screen === 'tabs') return;
+    const t = e.touches[0];
+    if (t.clientX > EDGE) return;
+    if (e.target.closest('input, textarea, select, button, [contenteditable]')) return;
+    _swipeBack = { sx: t.clientX, sy: t.clientY, ok: true };
+    const app = _appEl();
+    if (app) app.style.transition = 'none';
+    _showBackdrop();
+  }, { passive: true });
+
+  document.addEventListener('touchmove', function(e) {
+    if (!_swipeBack || !_swipeBack.ok) return;
+    const t = e.touches[0];
+    const dx = t.clientX - _swipeBack.sx;
+    const dy = Math.abs(t.clientY - _swipeBack.sy);
+    if (dy > Math.abs(dx)) { _swipeBack.ok = false; _resetApp(); return; }
+    if (dx > 10) e.preventDefault();
+    const app = _appEl();
+    if (app && dx > 0) app.style.transform = 'translateX(' + dx + 'px)';
+  }, { passive: false });
+
+  document.addEventListener('touchend', function(e) {
+    if (!_swipeBack) return;
+    const app = _appEl();
+    if (_swipeBack.ok) {
+      const t = e.changedTouches[0];
+      const dx = t.clientX - _swipeBack.sx;
+      if (dx > MIN_SWIPE) {
+        if (app) {
+          app.style.transition = 'transform 0.25s ease-out';
+          app.style.transform = 'translateX(100%)';
+        }
+        _swipeBack = null;
+        setTimeout(function() { _resetApp(); goBack(); }, 260);
+        return;
+      }
+    }
+    _swipeBack = null;
+    if (app) {
+      app.style.transition = 'transform 0.2s ease-out';
+      app.style.transform = 'translateX(0)';
+      setTimeout(_hideBackdrop, 210);
+    }
+  });
 }
 
 // 更新底部 tab 的 active 样式，让当前页和视觉状态保持一致。

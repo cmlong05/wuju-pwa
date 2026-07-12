@@ -1,4 +1,4 @@
-import { render, setRenderers, switchTab, goBack, navigate } from './core/app-shell.js';
+import { render, setRenderers, switchTab, goBack, navigate, initSwipeBack } from './core/app-shell.js';
 import { loadCategories, loadTags } from './ui.js';
 import { renderItemList, renderItemDetail, renderItemEdit, renderRelationEdit } from './views/items.js';
 import { renderContainerTree, renderContainerDetail, renderContainerEdit } from './views/containers.js';
@@ -69,6 +69,7 @@ export async function init() {
 
     bindTabs();
     bindBackButton();
+    initSwipeBack();
     await render();
 
     var st = document.getElementById('load-status');
