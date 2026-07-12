@@ -277,7 +277,11 @@ export function showQRModal(type, id, name, savedCode) {
   }
 
   var overlay = h('div', { className: 'overlay', onclick: function(e) { if (e.target === overlay) overlay.remove(); } }, [
-    h('div', { className: 'dialog', style: 'max-width:340px;text-align:center' }, [
+    h('div', { className: 'dialog', style: 'max-width:340px;text-align:center;position:relative' }, [
+      h('button', {
+        onclick: function() { overlay.remove(); },
+        style: 'position:absolute;top:8px;right:8px;width:28px;height:28px;border:none;background:transparent;font-size:18px;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:50%'
+      }, '✕'),
       h('div', { style: 'margin-bottom:12px' }, [
         h('div', { style: 'font-size:11px;color:var(--text-secondary);margin-bottom:4px' },
           type === 'item' ? '📦 物品' : '🗂️ 容器'),
@@ -286,10 +290,6 @@ export function showQRModal(type, id, name, savedCode) {
       h('div', { id: 'qr-svg', style: 'display:flex;justify-content:center' }),
       h('div', { id: 'qr-text', style: 'font-size:11px;color:var(--text-tertiary);margin-top:8px;word-break:break-all' }, currentText),
       h('div', { className: 'btns', style: 'margin-top:16px;flex-wrap:wrap;gap:8px' }, [
-        h('button', {
-          style: 'flex:1;min-width:70px;padding:12px 6px;border-radius:8px;border:none;background:#E5E5EA;cursor:pointer;font-size:14px',
-          onclick: function() { overlay.remove(); }
-        }, '关闭'),
         h('button', {
           style: 'flex:1;min-width:70px;padding:12px 6px;border-radius:8px;border:none;background:var(--tint);color:#fff;cursor:pointer;font-size:14px',
           onclick: function() { doScan(); }
