@@ -149,7 +149,7 @@ export async function renderContainerDetail(container, containerId) {
   actionBtn.style.display = 'block';
   actionBtn.innerHTML = '';
   actionBtn.appendChild(h('span', { onclick: () => showQRModal('container', c.id, c.name, c.qrCode), style: 'margin-right:8px' }, '▣'));
-  actionBtn.appendChild(h('span', { onclick: () => navigate('container-edit', { parentId: containerId }), style: 'margin-right:8px' }, '➕ 子容器'));
+  actionBtn.appendChild(h('span', { onclick: () => navigate('container-edit', { parentId: containerId }), style: 'margin-right:8px' }, '➕'));
   actionBtn.appendChild(h('span', { onclick: () => navigate('container-edit', { containerId: c.id, parentId: c.parentId }), style: 'margin-right:8px' }, '✎'));
   actionBtn.appendChild(h('span', { onclick: () => showDeleteDialog('容器', c.name + '（子容器将被一并删除）', async () => {
     await deleteContainerCascade(containerId);
