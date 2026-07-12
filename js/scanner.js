@@ -97,7 +97,7 @@ export async function showScanner(onScan, mode) {
     h('div', { style: 'margin:8px 16px 16px;flex-shrink:0;display:flex;gap:12px' }, [
       h('button', {
         id: 'torch-btn',
-        style: 'flex:1;padding:12px 24px;border-radius:8px;border:none;background:rgba(255,255,255,.2);color:#fff;font-size:15px;cursor:pointer;display:none',
+        style: 'flex:1;padding:12px 24px;border-radius:8px;border:none;background:rgba(255,255,255,.2);color:#fff;font-size:15px;cursor:pointer',
         onclick: _toggleTorch
       }, '💡'),
       h('button', {
