@@ -352,7 +352,7 @@ export async function renderItemEdit(container, itemId) {
   const actionBtn = $('#header .action');
   actionBtn.style.display = 'block';
   actionBtn.innerHTML = '';
-  actionBtn.appendChild(h('span', { onclick: async () => {
+  const saveIcon2 = h('span', { onclick: async () => {
     const name = $('#edit-name').value.trim();
     if (!name) return;
 
@@ -377,7 +377,9 @@ export async function renderItemEdit(container, itemId) {
       });
     }
     goBack();
-  }}, '💾'));
+  }, style: 'display:inline-flex;align-items:center;cursor:pointer' });
+  saveIcon2.innerHTML = '<svg width="1.6rem" height="1.6rem" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none"><polygon points="17 2 2 2 2 22 7 22 7 13 17 13 17 22 22 22 22 7 17 2" fill="currentColor" opacity="0.15"/><polygon points="17 2 2 2 2 22 7 22 7 13 17 13 17 22 22 22 22 7 17 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="miter"/><line x1="7" y1="7" x2="15" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="7" y1="22" x2="17" y2="22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  actionBtn.appendChild(saveIcon2);
 }
 
 // 渲染关联管理页，支持查看、删除和新增物品关联。

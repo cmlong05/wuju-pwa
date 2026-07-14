@@ -240,7 +240,7 @@ export async function renderContainerEdit(container, containerId, presetParentId
   const actionBtn = $('#header .action');
   actionBtn.style.display = 'block';
   actionBtn.innerHTML = '';
-  actionBtn.appendChild(h('span', { onclick: async () => {
+  const saveIcon1 = h('span', { onclick: async () => {
     const name = $('#cedit-name').value.trim();
     if (!name) return;
 
@@ -261,5 +261,7 @@ export async function renderContainerEdit(container, containerId, presetParentId
       });
     }
     goBack();
-  }}, '💾'));
+  }, style: 'display:inline-flex;align-items:center;cursor:pointer' });
+  saveIcon1.innerHTML = '<svg width="1.6rem" height="1.6rem" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none"><polygon points="17 2 2 2 2 22 7 22 7 13 17 13 17 22 22 22 22 7 17 2" fill="currentColor" opacity="0.15"/><polygon points="17 2 2 2 2 22 7 22 7 13 17 13 17 22 22 22 22 7 17 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="miter"/><line x1="7" y1="7" x2="15" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="7" y1="22" x2="17" y2="22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  actionBtn.appendChild(saveIcon1);
 }
