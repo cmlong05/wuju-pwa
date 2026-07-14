@@ -153,10 +153,12 @@ export async function renderContainerDetail(container, containerId) {
   actionBtn.appendChild(qrIcon1);
   actionBtn.appendChild(h('span', { onclick: () => navigate('container-edit', { parentId: containerId }), style: 'margin-right:8px' }, '➕'));
   actionBtn.appendChild(h('span', { onclick: () => navigate('container-edit', { containerId: c.id, parentId: c.parentId }), style: 'margin-right:8px' }, '✎'));
-  actionBtn.appendChild(h('span', { onclick: () => showDeleteDialog('容器', c.name + '（子容器将被一并删除）', async () => {
+  const delIcon1 = h('span', { onclick: () => showDeleteDialog('容器', c.name + '（子容器将被一并删除）', async () => {
     await deleteContainerCascade(containerId);
     goBack();
-  }), style: 'color:var(--red)' }, '✕'));
+  }), style: 'color:var(--red);display:inline-flex;align-items:center;cursor:pointer' });
+  delIcon1.innerHTML = '<svg width="1.6rem" height="1.6rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16,7V4a1,1,0,0,0-1-1H9A1,1,0,0,0,8,4V7m4,4v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/><path d="M4,7H20M17.07,20.07,18,7H6l.93,13.07a1,1,0,0,0,1,.93h8.14A1,1,0,0,0,17.07,20.07Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  actionBtn.appendChild(delIcon1);
 }
 
 // 渲染容器编辑页，支持图标、颜色、父容器和备注。

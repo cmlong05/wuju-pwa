@@ -246,11 +246,13 @@ export async function renderItemDetail(container, itemId) {
   qrIcon2.innerHTML = '<svg width="1.6rem" height="1.6rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M9.75 5.25H5.25V9.75H9.75V5.25ZM3.75 3.75V11.25H11.25V3.75H3.75ZM9.75 14.25H5.25V18.75H9.75V14.25ZM3.75 12.75V20.25H11.25V12.75H3.75ZM14.25 5.25H18.75V9.75H14.25V5.25ZM12.75 11.25V3.75H20.25V11.25H12.75ZM12.75 17.25V12.75H14.25V17.25H12.75ZM6.75 6.75V8.25H8.25V6.75H6.75ZM6.75 17.25V15.75H8.25V17.25H6.75ZM15.75 6.75V8.25H17.25V6.75H15.75ZM18.75 20.25V18H20.25V20.25H18.75ZM18.75 12.75V15H17.25V12.75H15.75V18.75H12.75V20.25H17.25V16.5H20.25V15V12.75H18.75Z" fill="currentColor"/></svg>';
   actionBtn.appendChild(qrIcon2);
   actionBtn.appendChild(h('span', { onclick: () => navigate('item-edit', { itemId }), style: 'margin-right:8px' }, '✎'));
-  actionBtn.appendChild(h('span', { onclick: () => showDeleteDialog('物品', item.name, async () => {
+  const delIcon2 = h('span', { onclick: () => showDeleteDialog('物品', item.name, async () => {
     await deleteItemRelations(itemId);
     await db.items.delete(itemId);
     goBack();
-  }), style: 'color:var(--red)' }, '✕'));
+  }), style: 'color:var(--red);display:inline-flex;align-items:center;cursor:pointer' });
+  delIcon2.innerHTML = '<svg width="1.6rem" height="1.6rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16,7V4a1,1,0,0,0-1-1H9A1,1,0,0,0,8,4V7m4,4v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/><path d="M4,7H20M17.07,20.07,18,7H6l.93,13.07a1,1,0,0,0,1,.93h8.14A1,1,0,0,0,17.07,20.07Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  actionBtn.appendChild(delIcon2);
 }
 
 // 渲染物品编辑页，负责创建和更新物品记录。
@@ -389,13 +391,17 @@ export async function renderRelationEdit(container, itemId) {
       h('div', { className: 'detail-row', style: 'justify-content:flex-start;gap:8px' }, [
         h('span', { className: 'relation-chip' }, relation.relationType),
         h('span', { style: 'flex:1' }, ri.name),
-        h('button', {
-          style: 'background:none;border:none;color:var(--red);cursor:pointer;font-size:16px',
-          onclick: async () => {
-            await db.relations.delete(relation.id);
-            render();
-          }
-        }, '✕')
+        (function() {
+          var b = h('button', {
+            style: 'background:none;border:none;color:var(--red);cursor:pointer;font-size:16px',
+            onclick: async () => {
+              await db.relations.delete(relation.id);
+              render();
+            }
+          });
+          b.innerHTML = '<svg width="1rem" height="1rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16,7V4a1,1,0,0,0-1-1H9A1,1,0,0,0,8,4V7m4,4v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/><path d="M4,7H20M17.07,20.07,18,7H6l.93,13.07a1,1,0,0,0,1,.93h8.14A1,1,0,0,0,17.07,20.07Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+          return b;
+        }())
       ])
     );
     wrapper.appendChild(sectionBlock('已有关联', rows));
