@@ -118,7 +118,14 @@ export async function renderContainerDetail(container, containerId) {
   } else {
     childRows.push(h('div', { className: 'detail-row', style: 'color:var(--text-secondary)' }, '此容器没有子容器'));
   }
-  childRows.push(h('div', { className: 'detail-row', onclick: () => navigate('container-edit', { parentId: containerId }), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, '➕ 添加子容器'));
+  childRows.push(h('div', { className: 'detail-row', onclick: () => navigate('container-edit', { parentId: containerId }), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, [
+    (function() {
+      var icon = h('span', { style: 'display:inline-flex;align-items:center;margin-right:4px' });
+      icon.innerHTML = '<svg width="1.2rem" height="1.2rem" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path d="M512 1024C229.7 1024 0 794.3 0 512S229.7 0 512 0s512 229.7 512 512-229.7 512-512 512z m0-938.7C276.7 85.3 85.3 276.7 85.3 512S276.7 938.7 512 938.7 938.7 747.3 938.7 512 747.3 85.3 512 85.3z" fill="#3688FF"/><path d="M682.7 554.7H341.3c-23.6 0-42.7-19.1-42.7-42.7s19.1-42.7 42.7-42.7h341.3c23.6 0 42.7 19.1 42.7 42.7s-19.1 42.7-42.6 42.7z" fill="#5F6379"/><path d="M512 725.3c-23.6 0-42.7-19.1-42.7-42.7V341.3c0-23.6 19.1-42.7 42.7-42.7s42.7 19.1 42.7 42.7v341.3c0 23.6-19.1 42.7-42.7 42.7z" fill="#5F6379"/></svg>';
+      return icon;
+    })(),
+    ' 添加子容器'
+  ]));
   wrapper.appendChild(sectionBlock('子容器', childRows));
 
   const items = await db.items.where('containerId').equals(containerId).toArray();
@@ -151,7 +158,11 @@ export async function renderContainerDetail(container, containerId) {
   const qrIcon1 = h('span', { onclick: () => showQRModal('container', c.id, c.name, c.qrCode), style: 'margin-right:8px;display:inline-flex;align-items:center;cursor:pointer' });
   qrIcon1.innerHTML = '<svg width="1.6rem" height="1.6rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M9.75 5.25H5.25V9.75H9.75V5.25ZM3.75 3.75V11.25H11.25V3.75H3.75ZM9.75 14.25H5.25V18.75H9.75V14.25ZM3.75 12.75V20.25H11.25V12.75H3.75ZM14.25 5.25H18.75V9.75H14.25V5.25ZM12.75 11.25V3.75H20.25V11.25H12.75ZM12.75 17.25V12.75H14.25V17.25H12.75ZM6.75 6.75V8.25H8.25V6.75H6.75ZM6.75 17.25V15.75H8.25V17.25H6.75ZM15.75 6.75V8.25H17.25V6.75H15.75ZM18.75 20.25V18H20.25V20.25H18.75ZM18.75 12.75V15H17.25V12.75H15.75V18.75H12.75V20.25H17.25V16.5H20.25V15V12.75H18.75Z" fill="currentColor"/></svg>';
   actionBtn.appendChild(qrIcon1);
-  actionBtn.appendChild(h('span', { onclick: () => navigate('container-edit', { parentId: containerId }), style: 'margin-right:8px' }, '➕'));
+  (function() {
+    var addIcon = h('span', { onclick: () => navigate('container-edit', { parentId: containerId }), style: 'margin-right:8px;display:inline-flex;align-items:center;cursor:pointer' });
+    addIcon.innerHTML = '<svg width="1.6rem" height="1.6rem" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path d="M512 1024C229.7 1024 0 794.3 0 512S229.7 0 512 0s512 229.7 512 512-229.7 512-512 512z m0-938.7C276.7 85.3 85.3 276.7 85.3 512S276.7 938.7 512 938.7 938.7 747.3 938.7 512 747.3 85.3 512 85.3z" fill="#3688FF"/><path d="M682.7 554.7H341.3c-23.6 0-42.7-19.1-42.7-42.7s19.1-42.7 42.7-42.7h341.3c23.6 0 42.7 19.1 42.7 42.7s-19.1 42.7-42.6 42.7z" fill="#5F6379"/><path d="M512 725.3c-23.6 0-42.7-19.1-42.7-42.7V341.3c0-23.6 19.1-42.7 42.7-42.7s42.7 19.1 42.7 42.7v341.3c0 23.6-19.1 42.7-42.7 42.7z" fill="#5F6379"/></svg>';
+    actionBtn.appendChild(addIcon);
+  })();
   const editIcon1 = h('span', { onclick: () => navigate('container-edit', { containerId: c.id, parentId: c.parentId }), style: 'margin-right:8px;display:inline-flex;align-items:center;cursor:pointer' });
   editIcon1.innerHTML = '<svg width="1.6rem" height="1.6rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 22H3c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h18c.41 0 .75.34.75.75s-.34.75-.75.75z" fill="currentColor"/><path d="M19.0206 3.48162c-1.94-1.94-3.84-1.99-5.83 0l-1.21 1.21c-.1.1-.14.26-.1.4.76 2.65 2.88 4.77 5.53 5.53.04.01.08.02.12.02.11 0 .21-.04.29-.12l1.2-1.21c.99-.98 1.47-1.93 1.47-2.89.01-.99-.47-1.95-1.47-2.94z" fill="currentColor"/><path d="M15.6103 11.5308c-.29-.14-.57-.28-.84-.44-.22-.13-.43-.27-.64-.42-.17-.11-.37-.27-.56-.43-.02-.01-.09-.07-.17-.15-.33-.28-.7-.64-1.03-1.04-.03-.02-.08-.09-.15-.18-.1-.12-.27-.32-.42-.55-.12-.15-.26-.37-.39-.59-.16-.27-.3-.54-.44-.82-.0211-.0454-.0416-.0906-.0612-.1355-.1476-.3333-.5823-.4308-.84-.173l-5.7285 5.7285c-.13.13-.25.38-.28.55l-.54 3.83c-.1.68.09 1.32.51 1.75.36.35.86.54 1.4.54.12 0 .24-.01.36-.03l3.84-.54c.18-.03.43-.15.55-.28l5.7213-5.7205c.2596-.2596.1617-.705-.1756-.8491-.038-.0162-.0765-.0328-.1149-.0496z" fill="currentColor"/></svg>';
   actionBtn.appendChild(editIcon1);

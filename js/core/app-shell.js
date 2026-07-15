@@ -96,16 +96,12 @@ export async function render() {
     updateTabBar();
     actionBtn.style.display = (state.tab === 'alerts' || state.tab === 'scan') ? 'none' : 'block';
     actionBtn.innerHTML = '';
-    if (state.tab === 'items') {
-      actionBtn.appendChild(document.createElement('span'));
-      actionBtn.firstChild.className = 'add-btn';
-      actionBtn.firstChild.textContent = '+';
-      actionBtn.firstChild.onclick = () => navigate('item-edit', {});
-    } else if (state.tab === 'spaces') {
-      actionBtn.appendChild(document.createElement('span'));
-      actionBtn.firstChild.className = 'add-btn';
-      actionBtn.firstChild.textContent = '+';
-      actionBtn.firstChild.onclick = () => navigate('container-edit', {});
+    if (state.tab === 'items' || state.tab === 'spaces') {
+      const addIcon = document.createElement('span');
+      addIcon.style.cssText = 'display:inline-flex;align-items:center;cursor:pointer';
+      addIcon.innerHTML = '<svg width="1.8rem" height="1.8rem" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path d="M512 1024C229.7 1024 0 794.3 0 512S229.7 0 512 0s512 229.7 512 512-229.7 512-512 512z m0-938.7C276.7 85.3 85.3 276.7 85.3 512S276.7 938.7 512 938.7 938.7 747.3 938.7 512 747.3 85.3 512 85.3z" fill="#3688FF"/><path d="M682.7 554.7H341.3c-23.6 0-42.7-19.1-42.7-42.7s19.1-42.7 42.7-42.7h341.3c23.6 0 42.7 19.1 42.7 42.7s-19.1 42.7-42.6 42.7z" fill="#5F6379"/><path d="M512 725.3c-23.6 0-42.7-19.1-42.7-42.7V341.3c0-23.6 19.1-42.7 42.7-42.7s42.7 19.1 42.7 42.7v341.3c0 23.6-19.1 42.7-42.7 42.7z" fill="#5F6379"/></svg>';
+      addIcon.onclick = () => navigate(state.tab === 'items' ? 'item-edit' : 'container-edit', {});
+      actionBtn.appendChild(addIcon);
     }
     if (state.tab === 'items' && renderers.renderItemList) await renderers.renderItemList(content);
     else if (state.tab === 'spaces' && renderers.renderContainerTree) await renderers.renderContainerTree(content);
