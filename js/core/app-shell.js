@@ -176,13 +176,18 @@ function _resetApp() {
   _hideBackdrop();
 }
 
-// ── 列表行右滑删除手势 ──
+// ── 列表行滑动操作手势（右滑删除 + 左滑移动）──
 let _swipeDel = null;
 let _openSwipeCell = null;
 let _swipeDeleteHandler = null;
+let _swipeMoveHandler = null;
 
 export function setSwipeDeleteHandler(handler) {
   _swipeDeleteHandler = handler;
+}
+
+export function setSwipeMoveHandler(handler) {
+  _swipeMoveHandler = handler;
 }
 
 export function initSwipeDelete() {
@@ -190,7 +195,6 @@ export function initSwipeDelete() {
     if (state.screen !== 'tabs') return;
     const cell = e.target.closest('.swipe-cell');
     if (!cell) return;
-    // 如果有其他行已划开，先关闭
     if (_openSwipeCell && _openSwipeCell !== cell) {
       const openRow = _openSwipeCell.querySelector('.swipe-row');
       if (openRow) {
@@ -210,16 +214,22 @@ export function initSwipeDelete() {
     const dy = Math.abs(t.clientY - _swipeDel.sy);
 
     if (dy > Math.abs(dx) * 1.3) { _swipeDel = null; return; }
-    if (dx < -15) { _swipeDel = null; return; }
 
     if (dx > 5) {
+      // 右滑 → 删除
       e.preventDefault();
       _swipeDel.dx = Math.min(dx, 80);
-      const row = _swipeDel.cell.querySelector('.swipe-row');
-      if (row) {
-        row.style.transition = 'none';
-        row.style.transform = 'translateX(' + _swipeDel.dx + 'px)';
-      }
+    } else if (dx < -5 && _swipeDel.cell.dataset.hasMove === '1') {
+      // 左滑 → 移动（仅物品行有 hasMove）
+      e.preventDefault();
+      _swipeDel.dx = Math.max(dx, -80);
+    } else {
+      return;
+    }
+    const row = _swipeDel.cell.querySelector('.swipe-row');
+    if (row) {
+      row.style.transition = 'none';
+      row.style.transform = 'translateX(' + _swipeDel.dx + 'px)';
     }
   }, { passive: false });
 
@@ -233,6 +243,7 @@ export function initSwipeDelete() {
     var name = cell.dataset.deleteName || '';
 
     if (dx > 50 && _swipeDeleteHandler) {
+      // 触发删除
       if (row) {
         row.style.transition = 'transform 0.25s ease-out';
         row.style.transform = 'translateX(100%)';
@@ -240,6 +251,12 @@ export function initSwipeDelete() {
       _openSwipeCell = null;
       _swipeDel = null;
       setTimeout(function() { _swipeDeleteHandler(type, id, name); }, 260);
+    } else if (dx < -50 && _swipeMoveHandler) {
+      // 触发移动
+      row.style.transition = 'transform 0.2s ease-out';
+      row.style.transform = 'translateX(0)';
+      _swipeDel = null;
+      _swipeMoveHandler(id, name);
     } else {
       if (row) {
         row.style.transition = 'transform 0.2s ease-out';

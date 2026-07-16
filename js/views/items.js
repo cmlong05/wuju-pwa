@@ -28,13 +28,16 @@ async function renderItemRows() {
   items.forEach(item => {
     var delBg = h('div', { className: 'swipe-delete-bg' });
     delBg.innerHTML = '<svg width="1.2rem" height="1.2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16,7V4a1,1,0,0,0-1-1H9A1,1,0,0,0,8,4V7m4,4v6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/><path d="M4,7H20M17.07,20.07,18,7H6l.93,13.07a1,1,0,0,0,1,.93h8.14A1,1,0,0,0,17.07,20.07Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    var moveBg = h('div', { className: 'swipe-move-bg' });
+    moveBg.innerHTML = '<svg width="1.2rem" height="1.2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 11H7.83l4.88-4.88c.39-.39.39-1.03 0-1.42-.39-.39-1.02-.39-1.41 0l-6.59 6.59c-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L7.83 13H19c.55 0 1-.45 1-1s-.45-1-1-1z" fill="white"/></svg>';
     var cell = h('div', {
       className: 'swipe-cell',
       'data-delete-type': 'item',
       'data-delete-id': item.id,
-      'data-delete-name': item.name
+      'data-delete-name': item.name,
+      'data-has-move': '1'
     }, [
-      delBg,
+      delBg, moveBg,
       h('div', { className: 'card-row item-row swipe-row', onclick: function(e) { navigate('item-detail', { itemId: item.id }); } }, [
         h('span', { className: 'cat-icon' }, catIcons[item.category] || '📦'),
         h('div', { className: 'info' }, [

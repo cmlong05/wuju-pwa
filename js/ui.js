@@ -296,3 +296,56 @@ export function showQRModal(type, id, name, savedCode) {
   document.body.appendChild(overlay);
   refreshQR();
 }
+// ── 快速移动物品到容器 ──
+export async function showMoveToContainer(itemId) {
+  var item = await db.items.get(itemId);
+  if (!item) return;
+  var containers = await db.containers.orderBy('name').toArray();
+
+  var overlay = h('div', { className: 'overlay', onclick: function(e) { if (e.target === overlay) overlay.remove(); } });
+  var dialog = h('div', { className: 'dialog', style: 'max-width:320px;max-height:70vh;overflow-y:auto;padding:0' });
+
+  dialog.appendChild(h('div', { style: 'padding:14px 16px;font-weight:600;font-size:16px;border-bottom:1px solid var(--separator);display:flex;justify-content:space-between;align-items:center' }, [
+    h('span', {}, '📦 ' + item.name + ' →'),
+    h('button', {
+      onclick: function() { overlay.remove(); },
+      style: 'background:none;border:none;font-size:20px;color:var(--text-secondary);cursor:pointer'
+    }, '✕')
+  ]));
+
+  var list = h('div', { className: 'card-row-group', style: 'margin:0;box-shadow:none;border-radius:0' });
+
+  // 未归类选项
+  var unclassed = h('div', {
+    className: 'detail-row',
+    style: 'cursor:pointer;' + (!item.containerId ? 'background:var(--tint-light)' : ''),
+    onclick: async function() {
+      await db.items.update(itemId, { containerId: '' });
+      overlay.remove();
+      render();
+    }
+  }, [h('span', { style: 'margin-right:8px' }, '📤'), h('span', {}, '未归类')]);
+  list.appendChild(unclassed);
+
+  containers.forEach(function(c) {
+    var current = c.id === item.containerId;
+    var row = h('div', {
+      className: 'detail-row',
+      style: 'cursor:pointer;' + (current ? 'background:var(--tint-light)' : ''),
+      onclick: async function() {
+        await db.items.update(itemId, { containerId: c.id });
+        overlay.remove();
+        render();
+      }
+    }, [
+      h('span', { style: 'color:' + (c.color || '#5B8FF9') + ';margin-right:8px' }, c.icon),
+      h('span', { style: 'flex:1' }, c.name),
+      current ? h('span', { style: 'font-size:12px;color:var(--tint)' }, '✓') : ''
+    ]);
+    list.appendChild(row);
+  });
+
+  dialog.appendChild(list);
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+}

@@ -1,5 +1,5 @@
-import { render, setRenderers, switchTab, goBack, navigate, initSwipeBack, initSwipeDelete, setSwipeDeleteHandler } from './core/app-shell.js';
-import { loadCategories, loadTags, showDeleteDialog } from './ui.js';
+import { render, setRenderers, switchTab, goBack, navigate, initSwipeBack, initSwipeDelete, setSwipeDeleteHandler, setSwipeMoveHandler } from './core/app-shell.js';
+import { loadCategories, loadTags, showDeleteDialog, showMoveToContainer } from './ui.js';
 import { renderItemList, renderItemDetail, renderItemEdit, renderRelationEdit } from './views/items.js';
 import { renderContainerTree, renderContainerDetail, renderContainerEdit } from './views/containers.js';
 import { renderAlertView } from './views/alerts.js';
@@ -84,6 +84,9 @@ export async function init() {
           render();
         });
       }
+    });
+    setSwipeMoveHandler(function(id, name) {
+      showMoveToContainer(id);
     });
     await render();
 
