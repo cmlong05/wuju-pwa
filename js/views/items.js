@@ -159,6 +159,7 @@ export async function renderItemList(container) {
       onclick: () => {
         if (selected) state.itemTags.delete(t.name);
         else state.itemTags.add(t.name);
+        state.tagFilter = '';
         render();
       }
     }, t.icon + ' ' + t.name));
