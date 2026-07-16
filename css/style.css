@@ -315,15 +315,11 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   width: 90px;
   border-color: var(--tint);
 }
-/* ✏️ 管理标签 — 在滚动容器末尾，sticky right，初始隐藏，左滑后出现 */
+/* ✏️ 管理标签 — 在滚动容器末尾，sticky right */
 .chip-scroll .chip-manage {
-  display: none;
   position: sticky;
   right: 0;
   z-index: 2;
-}
-.chip-scroll .chip-manage.pinned {
-  display: block;
 }
 .tag-filter-input::placeholder { color: var(--text-tertiary); }
 
