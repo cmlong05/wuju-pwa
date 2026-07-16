@@ -8,6 +8,7 @@ export const state = {
   itemSearch: '',
   itemCategory: null,
   itemTags: new Set(),
+  tagFilter: '',
   expandedContainers: new Set(),
 };
 

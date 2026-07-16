@@ -130,21 +130,25 @@ export async function renderItemList(container) {
     tagRow = h('div', { id: 'item-tag-row', className: 'chip-scroll', style: 'margin-top:4px' });
     container.appendChild(tagRow);
   }
-  // 搜索按钮
-  tagRow.appendChild(h('button', {
-    className: 'chip tag-chip',
-    style: 'padding:4px 8px;font-size:14px',
-    onclick: () => render()
-  }, '🔍'));
-  // 选中标签排到前面
-  const sorted = [...getTagsList()].sort((a, b) => {
-    const sa = state.itemTags.has(a.name) ? 0 : 1;
-    const sb = state.itemTags.has(b.name) ? 0 : 1;
-    return sa - sb;
+  // 标签筛选输入框（不触发全量 render，避免输入失焦）
+  const tagFilterInput = h('input', {
+    type: 'text', placeholder: '筛选标签...', value: state.tagFilter,
+    className: 'tag-filter-input'
   });
+  tagRow.appendChild(tagFilterInput);
+  // 选中标签排到前面，按筛选词过滤
+  const kw = (state.tagFilter || '').toLowerCase();
+  const sorted = [...getTagsList()]
+    .filter(t => !kw || t.name.toLowerCase().includes(kw))
+    .sort((a, b) => {
+      const sa = state.itemTags.has(a.name) ? 0 : 1;
+      const sb = state.itemTags.has(b.name) ? 0 : 1;
+      return sa - sb;
+    });
   sorted.forEach(t => {
     const selected = state.itemTags.has(t.name);
     tagRow.appendChild(h('button', {
+      'data-tag-name': t.name,
       className: 'chip tag-chip' + (selected ? ' selected' : ''),
       style: selected ? '' : 'opacity:0.65',
       onclick: () => {
@@ -153,6 +157,15 @@ export async function renderItemList(container) {
         render();
       }
     }, t.icon + ' ' + t.name));
+  });
+  // 行内筛选：不重建 DOM，直接显隐 + 刷新物品列表
+  tagFilterInput.addEventListener('input', function() {
+    state.tagFilter = this.value;
+    const kw2 = this.value.toLowerCase();
+    tagRow.querySelectorAll('[data-tag-name]').forEach(chip => {
+      chip.style.display = !kw2 || chip.dataset.tagName.toLowerCase().includes(kw2) ? '' : 'none';
+    });
+    renderItemRows();
   });
   tagRow.appendChild(h('button', {
     className: 'chip chip-manage',
