@@ -130,11 +130,10 @@ export async function renderItemList(container) {
     tagRow = h('div', { id: 'item-tag-row', className: 'chip-scroll', style: 'margin-top:4px' });
     container.appendChild(tagRow);
   }
-  tagRow.appendChild(h('span', { style: 'font-size:11px;color:var(--text-tertiary);padding:6px 4px;white-space:nowrap' }, '标签:'));
   getTagsList().forEach(t => {
     const selected = state.itemTags.has(t.name);
     tagRow.appendChild(h('button', {
-      className: 'chip' + (selected ? ' selected' : ''),
+      className: 'chip tag-chip' + (selected ? ' selected' : ''),
       style: selected ? '' : 'opacity:0.65',
       onclick: () => {
         if (selected) state.itemTags.delete(t.name);
@@ -304,7 +303,7 @@ export async function renderItemEdit(container, itemId) {
     const checked = itemTags.includes(t.name);
     const btn = h('button', {
       type: 'button',
-      className: 'chip' + (checked ? ' selected' : ''),
+      className: 'chip tag-chip' + (checked ? ' selected' : ''),
       style: (checked ? '' : 'opacity:0.5') + ';cursor:pointer',
       onclick: function() {
         var isSel = this.classList.contains('selected');

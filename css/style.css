@@ -239,6 +239,13 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
 }
 .chip.selected { background: var(--tint); color: #fff; }
 
+/* 标签 chip — 方形，区别于分类胶囊 */
+.chip.tag-chip {
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
 /* ── 物品行 ── */
 .item-row { gap: 12px; }
 .item-row .cat-icon { font-size: 22px; width: 28px; text-align: center; flex-shrink: 0; }
