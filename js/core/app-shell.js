@@ -210,11 +210,11 @@ export function initSwipeDelete() {
     const dy = Math.abs(t.clientY - _swipeDel.sy);
 
     if (dy > Math.abs(dx) * 1.3) { _swipeDel = null; return; }
-    if (dx > 15) { _swipeDel = null; return; }
+    if (dx < -15) { _swipeDel = null; return; }
 
-    if (dx < -5) {
+    if (dx > 5) {
       e.preventDefault();
-      _swipeDel.dx = Math.max(dx, -80);
+      _swipeDel.dx = Math.min(dx, 80);
       const row = _swipeDel.cell.querySelector('.swipe-row');
       if (row) {
         row.style.transition = 'none';
@@ -232,10 +232,10 @@ export function initSwipeDelete() {
     var id = cell.dataset.deleteId;
     var name = cell.dataset.deleteName || '';
 
-    if (dx < -50 && _swipeDeleteHandler) {
+    if (dx > 50 && _swipeDeleteHandler) {
       if (row) {
         row.style.transition = 'transform 0.25s ease-out';
-        row.style.transform = 'translateX(-100%)';
+        row.style.transform = 'translateX(100%)';
       }
       _openSwipeCell = null;
       _swipeDel = null;
