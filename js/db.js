@@ -308,51 +308,16 @@ export async function seedSampleData() {
   const homeId = uuid();
   const kitchenId = uuid();
   const fridgeId = uuid();
-  const coldId = uuid();
-  const freezerId = uuid();
-  const cabinetId = uuid();
-  const wardrobeId = uuid();
 
   await db.containers.bulkPut([
     { id: homeId, name: '家', icon: '🏠', color: '#5B8FF9', sortOrder: 0, notes: '', createdAt: now, parentId: '' },
     { id: kitchenId, name: '厨房', icon: '🍽️', color: '#5B8FF9', sortOrder: 0, notes: '', createdAt: now, parentId: homeId },
-    { id: fridgeId, name: '冰箱', icon: '❄️', color: '#5B8FF9', sortOrder: 0, notes: '', createdAt: now, parentId: kitchenId },
-    { id: coldId, name: '冷藏层', icon: '🧊', color: '#6DC8EC', sortOrder: 0, notes: '', createdAt: now, parentId: fridgeId },
-    { id: freezerId, name: '冷冻层', icon: '🧊', color: '#6DC8EC', sortOrder: 1, notes: '', createdAt: now, parentId: fridgeId },
-    { id: cabinetId, name: '橱柜', icon: '🗄️', color: '#5B8FF9', sortOrder: 2, notes: '', createdAt: now, parentId: kitchenId },
-    { id: wardrobeId, name: '衣柜', icon: '👕', color: '#FF99C3', sortOrder: 1, notes: '', createdAt: now, parentId: homeId },
+    { id: fridgeId, name: '冰箱', icon: '❄️', color: '#6DC8EC', sortOrder: 0, notes: '', createdAt: now, parentId: kitchenId },
   ]);
-
-  const eggId = uuid();
-  const milkId = uuid();
-  const yogurtId = uuid();
-  const dumplingId = uuid();
-  const riceId = uuid();
-  const saltId = uuid();
-  const medicineId = uuid();
-  const shirtId = uuid();
-  const tvId = uuid();
-  const remoteId = uuid();
-  const spareRemoteId = uuid();
-  const sofaId = uuid();
 
   await db.items.bulkPut([
-    { id: eggId, name: '鸡蛋', quantity: 8, category: '食品', tags: ['冷藏', '常用'], expiryDate: now + 7 * day, addedDate: now, notes: '', containerId: coldId },
-    { id: milkId, name: '牛奶', quantity: 1, category: '食品', tags: ['冷藏', '易碎'], expiryDate: now + 2 * day, addedDate: now, notes: '', containerId: coldId },
-    { id: yogurtId, name: '酸奶', quantity: 3, category: '食品', tags: ['冷藏'], expiryDate: now - 1 * day, addedDate: now, notes: '', containerId: coldId },
-    { id: dumplingId, name: '速冻水饺', quantity: 2, category: '食品', tags: ['冷冻', '常用'], expiryDate: now + 60 * day, addedDate: now, notes: '', containerId: freezerId },
-    { id: riceId, name: '大米', quantity: 1, category: '食品', tags: ['干货'], expiryDate: null, addedDate: now, notes: '', containerId: cabinetId },
-    { id: saltId, name: '盐', quantity: 1, category: '食品', tags: ['干货', '常用'], expiryDate: null, addedDate: now, notes: '', containerId: cabinetId },
-    { id: medicineId, name: '感冒药', quantity: 1, category: '药品', expiryDate: now + 30 * day, addedDate: now, notes: '', containerId: '' },
-    { id: shirtId, name: '白衬衫', quantity: 3, category: '衣物', expiryDate: null, addedDate: now, notes: '', containerId: wardrobeId },
-    { id: tvId, name: '电视机', quantity: null, category: '电子', expiryDate: null, addedDate: now, notes: '', containerId: '' },
-    { id: remoteId, name: '遥控器', quantity: null, category: '电子', expiryDate: null, addedDate: now, notes: '', containerId: '' },
-    { id: spareRemoteId, name: '备用遥控器', quantity: null, category: '电子', expiryDate: null, addedDate: now, notes: '', containerId: '' },
-    { id: sofaId, name: '沙发', quantity: null, category: '装饰', expiryDate: null, addedDate: now, notes: '', containerId: '' },
-  ]);
-
-  await db.relations.bulkPut([
-    { id: uuid(), sourceId: remoteId, targetId: tvId, relationType: '属于', notes: '原装遥控器', createdAt: now },
-    { id: uuid(), sourceId: spareRemoteId, targetId: remoteId, relationType: '备用', notes: '淘宝买的', createdAt: now },
+    { id: uuid(), name: '鸡蛋', quantity: 8, category: '食品', tags: ['冷藏', '常用'], expiryDate: now + 7 * day, addedDate: now, notes: '', containerId: fridgeId },
+    { id: uuid(), name: '牛奶', quantity: 1, category: '食品', tags: ['冷藏'], expiryDate: now + 2 * day, addedDate: now, notes: '', containerId: fridgeId },
+    { id: uuid(), name: '感冒药', quantity: 1, category: '药品', expiryDate: now + 30 * day, addedDate: now, notes: '', containerId: '' },
   ]);
 }
