@@ -141,38 +141,28 @@ export async function renderItemList(container) {
     mgrBtn = h('button', { id: 'item-tag-mgr', className: 'chip chip-manage', onclick: () => showTagManager() }, '✏️');
   }
 
-  // scroll + rAF 检测滚动位置，实时切换过滤框/✏️
-  if (!tagRow._scrollBound) {
-    tagRow._scrollBound = true;
-    var ticking = false;
-    tagRow.addEventListener('scroll', function() {
-      if (!ticking) {
-        requestAnimationFrame(function() {
-          var btn = document.getElementById('item-tag-mgr');
-          var flt = tagRow.querySelector('.tag-filter-input');
-          if (tagRow.scrollLeft > 0) {
-            if (btn) btn.classList.add('show');
-            if (flt) flt.style.display = 'none';
-          } else {
-            if (btn) btn.classList.remove('show');
-            if (flt) flt.style.display = '';
-          }
-          ticking = false;
-        });
-        ticking = true;
-      }
-    }, { passive: true });
-    // touchend 兜底：延迟检测回弹后的最终位置
-    tagRow.addEventListener('touchend', function() {
-      var self = this;
-      setTimeout(function() {
-        if (self.scrollLeft > 0) return;
-        var btn = document.getElementById('item-tag-mgr');
-        var flt = self.querySelector('.tag-filter-input');
-        if (btn) btn.classList.remove('show');
-        if (flt) flt.style.display = '';
-      }, 200);
-    }, { passive: true });
+  // IntersectionObserver：✏️ 进入可视区 → 显示+隐藏过滤框；离开 → 恢复
+  if (!tagRow._obsBound) {
+    tagRow._obsBound = true;
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        var btn = entry.target;
+        var flt = tagRow.querySelector('.tag-filter-input');
+        if (entry.isIntersecting) {
+          btn.classList.add('show');
+          if (flt) flt.style.display = 'none';
+        } else {
+          btn.classList.remove('show');
+          if (flt) flt.style.display = '';
+        }
+      });
+    }, { root: tagRow, threshold: 0 });
+    // observe 在 ✏️ 加到 DOM 后执行
+    tagRow._observer = observer;
+  }
+  if (tagRow._observer) {
+    // disconnect 旧的、observe 新的（render 重建后 mgrBtn 可能是新元素）
+    tagRow._observer.disconnect();
   }
   // 标签筛选输入框（不触发全量 render，避免输入失焦）
   const tagFilterInput = h('input', {
@@ -211,10 +201,12 @@ export async function renderItemList(container) {
       chip.style.display = !kw2 || chip.dataset.tagName.toLowerCase().includes(kw2) ? '' : 'none';
     });
   });
-  // ✏️ 放在末尾；不溢出时始终显示
+  // ✏️ 放在末尾；不溢出时始终显示，溢出时 observer 接管
   tagRow.appendChild(mgrBtn);
   if (tagRow.scrollWidth <= tagRow.clientWidth) {
     mgrBtn.classList.add('show');
+  } else if (tagRow._observer) {
+    tagRow._observer.observe(mgrBtn);
   }
   await renderItemRows();
 }
