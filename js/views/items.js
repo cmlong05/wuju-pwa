@@ -132,7 +132,7 @@ export async function renderItemList(container) {
   }
   // 标签筛选输入框（不触发全量 render，避免输入失焦）
   const tagFilterInput = h('input', {
-    type: 'text', placeholder: '筛选标签...', value: state.tagFilter,
+    type: 'text', placeholder: '过滤...', value: state.tagFilter,
     className: 'tag-filter-input'
   });
   tagRow.appendChild(tagFilterInput);

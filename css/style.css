@@ -248,7 +248,7 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
 
 .tag-filter-input {
   flex-shrink: 0;
-  width: 90px;
+  width: 48px;
   padding: 4px 8px;
   border: 1px solid var(--separator);
   border-radius: 6px;
@@ -256,8 +256,12 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   background: var(--card-bg);
   color: var(--text);
   outline: none;
+  transition: width 0.2s ease;
 }
-.tag-filter-input:focus { border-color: var(--tint); }
+.tag-filter-input:focus {
+  width: 90px;
+  border-color: var(--tint);
+}
 .tag-filter-input::placeholder { color: var(--text-tertiary); }
 
 /* ── 物品行 ── */
