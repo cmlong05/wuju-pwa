@@ -140,6 +140,36 @@ export async function renderItemList(container) {
   if (!mgrBtn) {
     mgrBtn = h('button', { id: 'item-tag-mgr', className: 'chip chip-manage', onclick: () => showTagManager() }, '✏️');
   }
+
+  // touchmove 实时切换 + touchend 回弹修正
+  if (!tagRow._touchBound) {
+    tagRow._touchBound = true;
+    var _tx = 0;
+    tagRow.addEventListener('touchstart', function(e) { _tx = e.touches[0].clientX; }, { passive: true });
+    tagRow.addEventListener('touchmove', function(e) {
+      var dx = _tx - e.touches[0].clientX;
+      var btn = document.getElementById('item-tag-mgr');
+      var flt = this.querySelector('.tag-filter-input');
+      if (dx > 10) {
+        if (btn) btn.classList.add('show');
+        if (flt) flt.style.display = 'none';
+      } else if (dx < -10) {
+        if (btn) btn.classList.remove('show');
+        if (flt) flt.style.display = '';
+      }
+    }, { passive: true });
+    tagRow.addEventListener('touchend', function() {
+      var self = this;
+      setTimeout(function() {
+        var btn = document.getElementById('item-tag-mgr');
+        var flt = self.querySelector('.tag-filter-input');
+        if (self.scrollLeft === 0) {
+          if (btn) btn.classList.remove('show');
+          if (flt) flt.style.display = '';
+        }
+      }, 150);
+    }, { passive: true });
+  }
   // 标签筛选输入框（不触发全量 render，避免输入失焦）
   const tagFilterInput = h('input', {
     type: 'text', placeholder: '过滤...', value: state.tagFilter,
@@ -177,8 +207,11 @@ export async function renderItemList(container) {
       chip.style.display = !kw2 || chip.dataset.tagName.toLowerCase().includes(kw2) ? '' : 'none';
     });
   });
-  // ✏️ 放在末尾
+  // ✏️ 放在末尾；不溢出时始终显示
   tagRow.appendChild(mgrBtn);
+  if (tagRow.scrollWidth <= tagRow.clientWidth) {
+    mgrBtn.classList.add('show');
+  }
   await renderItemRows();
 }
 
