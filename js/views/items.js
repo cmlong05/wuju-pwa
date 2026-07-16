@@ -141,20 +141,28 @@ export async function renderItemList(container) {
     mgrBtn = h('button', { id: 'item-tag-mgr', className: 'chip chip-manage', onclick: () => showTagManager() }, '✏️');
   }
 
-  // 左滑后 ✏️ 显示、过滤框隐藏；回原位恢复
+  // 左滑 ✏️ 显+过滤框隐；回零位恢复。scroll + touchend 双保险
   if (!tagRow._scrollBound) {
     tagRow._scrollBound = true;
-    tagRow.addEventListener('scroll', function() {
+    function updateTagUI() {
       var btn = document.getElementById('item-tag-mgr');
-      var flt = this.querySelector('.tag-filter-input');
-      if (this.scrollLeft > 0) {
+      var flt = tagRow.querySelector('.tag-filter-input');
+      // 不溢出：过滤框 ✏️ 都显示
+      if (tagRow.scrollWidth <= tagRow.clientWidth) {
+        if (btn) btn.classList.add('show');
+        if (flt) flt.style.display = '';
+        return;
+      }
+      if (tagRow.scrollLeft > 0) {
         if (btn) btn.classList.add('show');
         if (flt) flt.style.display = 'none';
       } else {
         if (btn) btn.classList.remove('show');
         if (flt) flt.style.display = '';
       }
-    }, { passive: true });
+    }
+    tagRow.addEventListener('scroll', updateTagUI, { passive: true });
+    tagRow.addEventListener('touchend', updateTagUI, { passive: true });
   }
   // 标签筛选输入框（不触发全量 render，避免输入失焦）
   const tagFilterInput = h('input', {
