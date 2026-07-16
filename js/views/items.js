@@ -158,14 +158,13 @@ export async function renderItemList(container) {
       }
     }, t.icon + ' ' + t.name));
   });
-  // 行内筛选：不重建 DOM，直接显隐 + 刷新物品列表
+  // 行内筛选：不重建 DOM，直接显隐标签 chip（不影响物品列表）
   tagFilterInput.addEventListener('input', function() {
     state.tagFilter = this.value;
     const kw2 = this.value.toLowerCase();
     tagRow.querySelectorAll('[data-tag-name]').forEach(chip => {
       chip.style.display = !kw2 || chip.dataset.tagName.toLowerCase().includes(kw2) ? '' : 'none';
     });
-    renderItemRows();
   });
   tagRow.appendChild(h('button', {
     className: 'chip chip-manage',
