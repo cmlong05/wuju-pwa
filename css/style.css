@@ -298,9 +298,6 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
 
 .tag-filter-input {
   flex-shrink: 0;
-  position: sticky;
-  left: 0;
-  z-index: 2;
   width: 48px;
   padding: 4px 8px;
   border: 1px solid var(--separator);
