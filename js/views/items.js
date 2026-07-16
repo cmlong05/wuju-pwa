@@ -181,28 +181,30 @@ export async function renderItemList(container) {
     });
   });
 
-  // touchmove 方向检测：左滑→✏️显+过滤框隐，右滑→恢复（document 级别）
+  // touchmove 方向检测：方向变立即切换（document 级别，2px 阈值）
   if (!window._tagTouchBound) {
     window._tagTouchBound = true;
-    var _tx = 0;
+    var _px = 0;
     document.addEventListener('touchstart', function(e) {
       if (!e.target.closest('#item-tag-row')) return;
-      _tx = e.touches[0].clientX;
+      _px = e.touches[0].clientX;
     }, { passive: true });
     document.addEventListener('touchmove', function(e) {
       if (!e.target.closest('#item-tag-row')) return;
       var tr = document.getElementById('item-tag-row');
       if (!tr || tr.scrollWidth <= tr.clientWidth) return;
-      var dx = _tx - e.touches[0].clientX;
+      var cx = e.touches[0].clientX;
+      var dx = _px - cx;
       var btn = document.getElementById('item-tag-mgr');
       var flt = tr.querySelector('.tag-filter-input');
-      if (dx > 10) {
+      if (dx > 2) {
         if (btn) btn.classList.add('show');
         if (flt) flt.style.display = 'none';
-      } else if (dx < -10) {
+      } else if (dx < -2) {
         if (btn) btn.classList.remove('show');
         if (flt) flt.style.display = '';
       }
+      _px = cx;
     }, { passive: true });
   }
   await renderItemRows();
