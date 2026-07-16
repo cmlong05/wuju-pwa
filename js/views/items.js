@@ -141,14 +141,19 @@ export async function renderItemList(container) {
     mgrBtn = h('button', { id: 'item-tag-mgr', className: 'chip chip-manage', onclick: () => showTagManager() }, '✏️');
   }
 
-  // 左滑后显示 ✏️，回原位隐藏（首次绑一次）
+  // 左滑后 ✏️ 显示、过滤框隐藏；回原位恢复
   if (!tagRow._scrollBound) {
     tagRow._scrollBound = true;
     tagRow.addEventListener('scroll', function() {
       var btn = document.getElementById('item-tag-mgr');
-      if (!btn) return;
-      if (this.scrollLeft > 0) btn.classList.add('show');
-      else btn.classList.remove('show');
+      var flt = this.querySelector('.tag-filter-input');
+      if (this.scrollLeft > 0) {
+        if (btn) btn.classList.add('show');
+        if (flt) flt.style.display = 'none';
+      } else {
+        if (btn) btn.classList.remove('show');
+        if (flt) flt.style.display = '';
+      }
     }, { passive: true });
   }
   // 标签筛选输入框（不触发全量 render，避免输入失焦）
@@ -188,7 +193,8 @@ export async function renderItemList(container) {
       chip.style.display = !kw2 || chip.dataset.tagName.toLowerCase().includes(kw2) ? '' : 'none';
     });
   });
-  // ✏️ 附到末尾，不溢出时直接可见
+  // ✏️ 附到末尾，初始隐藏，不溢出时直接可见
+  mgrBtn.classList.remove('show');
   tagRow.appendChild(mgrBtn);
   if (tagRow.scrollWidth <= tagRow.clientWidth) {
     mgrBtn.classList.add('show');
