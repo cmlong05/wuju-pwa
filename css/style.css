@@ -239,33 +239,6 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
 }
 .chip.selected { background: var(--tint); color: #fff; }
 
-/* ── 分段控制器 ── */
-.segment {
-  display: flex;
-  background: #E5E5EA;
-  border-radius: 8px;
-  padding: 2px;
-  margin: 8px 16px;
-}
-
-.segment button {
-  flex: 1;
-  padding: 6px 0;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  background: transparent;
-  color: var(--text-secondary);
-  transition: all 0.15s;
-}
-.segment button.active {
-  background: #fff;
-  color: var(--text);
-  box-shadow: 0 1px 2px rgba(0,0,0,.1);
-}
-
 /* ── 物品行 ── */
 .item-row { gap: 12px; }
 .item-row .cat-icon { font-size: 22px; width: 28px; text-align: center; flex-shrink: 0; }

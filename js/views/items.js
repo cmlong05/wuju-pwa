@@ -1,6 +1,6 @@
 import { $, h, formatDate, isExpired, isExpiringSoon } from '../core/dom.js';
 import { state, navigate, goBack, render } from '../core/app-shell.js';
-import { db, getItemsSorted, getContainerPath, getItemRelations, deleteItemRelations, uuid } from '../db.js';
+import { db, getContainerPath, getItemRelations, deleteItemRelations, uuid } from '../db.js';
 import { catIcons, tagIcons, getCategoriesList, getTagsList, showQRModal, showDeleteDialog, sectionBlock, rowItem, rowLink, formGroup, toggleField, emptyView, showTagManager, showCategoryManager } from '../ui.js';
 import { startAssociationScan, startLocationScan } from '../scanner.js';
 
@@ -14,7 +14,7 @@ async function renderItemRows() {
   const category = state.itemCategory;
   const selectedTags = [...state.itemTags];
 
-  let items = await getItemsSorted(state.itemSort);
+  let items = await db.items.orderBy('name').toArray();
   if (category) items = items.filter(i => i.category === category);
   if (selectedTags.length > 0) items = items.filter(i => i.tags && selectedTags.every(t => i.tags.includes(t)));
   if (search) items = items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
@@ -149,20 +149,6 @@ export async function renderItemList(container) {
     style: 'font-size:14px'
   }, '✏️'));
   container.appendChild(tagRow);
-
-  let seg = document.getElementById('item-seg');
-  if (seg) seg.innerHTML = '';
-  else {
-    seg = h('div', { id: 'item-seg', className: 'segment' });
-    container.appendChild(seg);
-  }
-  ['name', 'date', 'expiry'].forEach(s => {
-    seg.appendChild(h('button', {
-      className: state.itemSort === s ? 'active' : '',
-      onclick: () => { state.itemSort = s; render(); }
-    }, s === 'name' ? '名称' : s === 'date' ? '时间' : '到期'));
-  });
-  container.appendChild(seg);
 
   await renderItemRows();
 }

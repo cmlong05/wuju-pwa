@@ -247,16 +247,6 @@ export async function getItemsByCategory(category) {
   return db.items.where('category').equals(category).sortBy('name');
 }
 
-export async function getItemsSorted(sortBy) {
-  let items = await db.items.toArray();
-  switch (sortBy) {
-    case 'name': items.sort((a, b) => a.name.localeCompare(b.name, 'zh')); break;
-    case 'date': items.sort((a, b) => (b.addedDate || 0) - (a.addedDate || 0)); break;
-    case 'expiry': items.sort((a, b) => (a.expiryDate || Infinity) - (b.expiryDate || Infinity)); break;
-  }
-  return items;
-}
-
 export async function getExpiredItems() {
   const now = Date.now();
   return db.items.where('expiryDate').below(now).toArray();

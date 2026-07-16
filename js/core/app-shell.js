@@ -8,7 +8,6 @@ export const state = {
   itemSearch: '',
   itemCategory: null,
   itemTags: new Set(),
-  itemSort: 'name',
   expandedContainers: new Set(),
 };
 
