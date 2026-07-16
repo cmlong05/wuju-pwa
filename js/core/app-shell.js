@@ -176,6 +176,81 @@ function _resetApp() {
   _hideBackdrop();
 }
 
+// ── 列表行右滑删除手势 ──
+let _swipeDel = null;
+let _openSwipeCell = null;
+let _swipeDeleteHandler = null;
+
+export function setSwipeDeleteHandler(handler) {
+  _swipeDeleteHandler = handler;
+}
+
+export function initSwipeDelete() {
+  document.addEventListener('touchstart', function(e) {
+    if (state.screen !== 'tabs') return;
+    const cell = e.target.closest('.swipe-cell');
+    if (!cell) return;
+    // 如果有其他行已划开，先关闭
+    if (_openSwipeCell && _openSwipeCell !== cell) {
+      const openRow = _openSwipeCell.querySelector('.swipe-row');
+      if (openRow) {
+        openRow.style.transition = 'transform 0.2s ease-out';
+        openRow.style.transform = 'translateX(0)';
+      }
+      _openSwipeCell = null;
+    }
+    const t = e.touches[0];
+    _swipeDel = { cell, sx: t.clientX, sy: t.clientY, dx: 0 };
+  }, { passive: true });
+
+  document.addEventListener('touchmove', function(e) {
+    if (!_swipeDel) return;
+    const t = e.touches[0];
+    const dx = t.clientX - _swipeDel.sx;
+    const dy = Math.abs(t.clientY - _swipeDel.sy);
+
+    if (dy > Math.abs(dx) * 1.3) { _swipeDel = null; return; }
+    if (dx > 15) { _swipeDel = null; return; }
+
+    if (dx < -5) {
+      e.preventDefault();
+      _swipeDel.dx = Math.max(dx, -80);
+      const row = _swipeDel.cell.querySelector('.swipe-row');
+      if (row) {
+        row.style.transition = 'none';
+        row.style.transform = 'translateX(' + _swipeDel.dx + 'px)';
+      }
+    }
+  }, { passive: false });
+
+  document.addEventListener('touchend', function(e) {
+    if (!_swipeDel) return;
+    var cell = _swipeDel.cell;
+    var row = cell.querySelector('.swipe-row');
+    var dx = _swipeDel.dx;
+    var type = cell.dataset.deleteType;
+    var id = cell.dataset.deleteId;
+    var name = cell.dataset.deleteName || '';
+
+    if (dx < -50 && _swipeDeleteHandler) {
+      if (row) {
+        row.style.transition = 'transform 0.25s ease-out';
+        row.style.transform = 'translateX(-100%)';
+      }
+      _openSwipeCell = null;
+      _swipeDel = null;
+      setTimeout(function() { _swipeDeleteHandler(type, id, name); }, 260);
+    } else {
+      if (row) {
+        row.style.transition = 'transform 0.2s ease-out';
+        row.style.transform = 'translateX(0)';
+      }
+      _swipeDel = null;
+    }
+  });
+}
+
+// ── 屏幕左边缘右滑返回 ──
 export function initSwipeBack() {
   const EDGE = 30;
   const MIN_SWIPE = 80;

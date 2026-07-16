@@ -1,10 +1,10 @@
-import { render, setRenderers, switchTab, goBack, navigate, initSwipeBack } from './core/app-shell.js';
-import { loadCategories, loadTags } from './ui.js';
+import { render, setRenderers, switchTab, goBack, navigate, initSwipeBack, initSwipeDelete, setSwipeDeleteHandler } from './core/app-shell.js';
+import { loadCategories, loadTags, showDeleteDialog } from './ui.js';
 import { renderItemList, renderItemDetail, renderItemEdit, renderRelationEdit } from './views/items.js';
 import { renderContainerTree, renderContainerDetail, renderContainerEdit } from './views/containers.js';
 import { renderAlertView } from './views/alerts.js';
 import { startUniversalScan } from './scanner.js';
-import { seedSampleData } from './db.js';
+import { db, seedSampleData, deleteItemRelations, deleteContainerCascade } from './db.js';
 
 // 绑定底部 tab 点击事件，让切换入口保持在壳层，不散落到各页面里。
 function bindTabs() {
@@ -70,6 +70,21 @@ export async function init() {
     bindTabs();
     bindBackButton();
     initSwipeBack();
+    initSwipeDelete();
+    setSwipeDeleteHandler(function(type, id, name) {
+      if (type === 'item') {
+        showDeleteDialog('物品', name, async function() {
+          await deleteItemRelations(id);
+          await db.items.delete(id);
+          render();
+        });
+      } else if (type === 'container') {
+        showDeleteDialog('容器', name + '（子容器将被一并删除）', async function() {
+          await deleteContainerCascade(id);
+          render();
+        });
+      }
+    });
     await render();
 
     var st = document.getElementById('load-status');

@@ -26,26 +26,36 @@ async function renderItemRows() {
 
   const list = h('div', { className: 'card-row-group' });
   items.forEach(item => {
-    const row = h('div', { className: 'card-row item-row', onclick: () => navigate('item-detail', { itemId: item.id }) }, [
-      h('span', { className: 'cat-icon' }, catIcons[item.category] || '📦'),
-      h('div', { className: 'info' }, [
-        h('div', { className: 'name' }, item.name),
-        item.containerId ? h('div', { className: 'sub' }, '') : ''
-      ]),
-      h('div', { className: 'badges' }, [
-        isExpired(item.expiryDate) ? h('span', { className: 'badge badge-red' }, '过期') : '',
-        !isExpired(item.expiryDate) && isExpiringSoon(item.expiryDate) ? h('span', { className: 'badge badge-orange' }, '将过期') : '',
-        item.quantity != null ? h('span', { className: 'qty' }, '×' + item.quantity) : '',
-      ]),
-      h('span', { className: 'chevron' }, '›')
+    var delBg = h('div', { className: 'swipe-delete-bg' });
+    delBg.innerHTML = '<svg width="1.2rem" height="1.2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16,7V4a1,1,0,0,0-1-1H9A1,1,0,0,0,8,4V7m4,4v6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/><path d="M4,7H20M17.07,20.07,18,7H6l.93,13.07a1,1,0,0,0,1,.93h8.14A1,1,0,0,0,17.07,20.07Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    var cell = h('div', {
+      className: 'swipe-cell',
+      'data-delete-type': 'item',
+      'data-delete-id': item.id,
+      'data-delete-name': item.name
+    }, [
+      delBg,
+      h('div', { className: 'card-row item-row swipe-row', onclick: function(e) { navigate('item-detail', { itemId: item.id }); } }, [
+        h('span', { className: 'cat-icon' }, catIcons[item.category] || '📦'),
+        h('div', { className: 'info' }, [
+          h('div', { className: 'name' }, item.name),
+          item.containerId ? h('div', { className: 'sub' }, '') : ''
+        ]),
+        h('div', { className: 'badges' }, [
+          isExpired(item.expiryDate) ? h('span', { className: 'badge badge-red' }, '过期') : '',
+          !isExpired(item.expiryDate) && isExpiringSoon(item.expiryDate) ? h('span', { className: 'badge badge-orange' }, '将过期') : '',
+          item.quantity != null ? h('span', { className: 'qty' }, '×' + item.quantity) : '',
+        ]),
+        h('span', { className: 'chevron' }, '›')
+      ])
     ]);
     if (item.containerId) {
       getContainerPath(item.containerId).then(path => {
-        const sub = row.querySelector('.sub');
-        if (sub) sub.textContent = path.map(c => c.name).join(' > ');
+        var sub = cell.querySelector('.sub');
+        if (sub) sub.textContent = path.map(function(c) { return c.name; }).join(' > ');
       });
     }
-    list.appendChild(row);
+    list.appendChild(cell);
   });
   wrap.appendChild(list);
 }

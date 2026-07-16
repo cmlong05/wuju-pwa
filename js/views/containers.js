@@ -20,17 +20,27 @@ async function renderContainerNodes(container, level) {
   children.sort((a, b) => a.sortOrder - b.sortOrder);
   const isExpanded = state.expandedContainers.has(container.id);
 
-  const row = h('div', { className: 'tree-row', style: { paddingLeft: (16 + level * 20) + 'px' } }, [
-    children.length > 0
-      ? h('span', { className: 'expand', onclick: (e) => { e.stopPropagation(); toggleContainerExpand(container.id); } },
-          isExpanded ? '▼' : '▶')
-      : h('span', { className: 'expand' }, ''),
-    h('span', { className: 'container-icon', style: { color: container.color } }, container.icon),
-    h('span', { className: 'container-name', onclick: () => navigate('container-detail', { containerId: container.id }) }, container.name),
-    h('span', { className: 'container-count' }, totalItems + ' 件'),
-    h('span', { className: 'chevron', onclick: () => navigate('container-detail', { containerId: container.id }) }, '›')
+  var delBg = h('div', { className: 'swipe-delete-bg' });
+  delBg.innerHTML = '<svg width="1.2rem" height="1.2rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16,7V4a1,1,0,0,0-1-1H9A1,1,0,0,0,8,4V7m4,4v6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/><path d="M4,7H20M17.07,20.07,18,7H6l.93,13.07a1,1,0,0,0,1,.93h8.14A1,1,0,0,0,17.07,20.07Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var cell = h('div', {
+    className: 'swipe-cell',
+    'data-delete-type': 'container',
+    'data-delete-id': container.id,
+    'data-delete-name': container.name
+  }, [
+    delBg,
+    h('div', { className: 'tree-row swipe-row', style: { paddingLeft: (16 + level * 20) + 'px' } }, [
+      children.length > 0
+        ? h('span', { className: 'expand', onclick: function(e) { e.stopPropagation(); toggleContainerExpand(container.id); } },
+            isExpanded ? '▼' : '▶')
+        : h('span', { className: 'expand' }, ''),
+      h('span', { className: 'container-icon', style: { color: container.color } }, container.icon),
+      h('span', { className: 'container-name', onclick: function() { navigate('container-detail', { containerId: container.id }); } }, container.name),
+      h('span', { className: 'container-count' }, totalItems + ' 件'),
+      h('span', { className: 'chevron', onclick: function() { navigate('container-detail', { containerId: container.id }); } }, '›')
+    ])
   ]);
-  nodes.push(row);
+  nodes.push(cell);
 
   if (isExpanded && children.length > 0) {
     for (const child of children) {

@@ -151,9 +151,24 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   transition: background 0.1s;
 }
 .card-row:active { background: #F0F0F5; }
-.card-row:first-of-type { border-radius: var(--radius) var(--radius) 0 0; }
-.card-row:last-of-type { border-bottom: none; border-radius: 0 0 var(--radius) var(--radius); }
-.card-row:only-of-type { border-radius: var(--radius); }
+
+/* ── 右滑删除 ── */
+.swipe-cell {
+  position: relative;
+  overflow: hidden;
+}
+.swipe-cell:first-of-type .swipe-row { border-radius: var(--radius) var(--radius) 0 0; }
+.swipe-cell:last-of-type .swipe-row { border-bottom: none; border-radius: 0 0 var(--radius) var(--radius); }
+.swipe-cell:only-of-type .swipe-row { border-radius: var(--radius); }
+.swipe-delete-bg {
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 80px;
+  background: var(--red);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .card-row-group { margin: 8px 16px; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
 
 /* ── 搜索栏 ── */
@@ -348,6 +363,9 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   cursor: pointer; gap: 8px;
 }
 .tree-row:active { background: #F0F0F5; }
+.swipe-cell:first-of-type .tree-row { border-radius: var(--radius) var(--radius) 0 0; }
+.swipe-cell:last-of-type .tree-row { border-bottom: none; border-radius: 0 0 var(--radius) var(--radius); }
+.swipe-cell:only-of-type .tree-row { border-radius: var(--radius); }
 .tree-row .expand { width: 24px; font-size: 12px; text-align: center; color: var(--text-tertiary); flex-shrink: 0; }
 .tree-row .container-icon { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
 .tree-row .container-name { font-weight: 500; flex: 1; }
