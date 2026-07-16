@@ -304,7 +304,7 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   left: 0;
   z-index: 2;
   width: 48px;
-  padding: 3px 8px;
+  padding: 1px 8px;
   border: 1px solid var(--separator);
   border-radius: 6px;
   font-size: 12px;
