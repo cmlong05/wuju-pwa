@@ -141,33 +141,37 @@ export async function renderItemList(container) {
     mgrBtn = h('button', { id: 'item-tag-mgr', className: 'chip chip-manage', onclick: () => showTagManager() }, '✏️');
   }
 
-  // touchmove 实时切换 + touchend 回弹修正
-  if (!tagRow._touchBound) {
-    tagRow._touchBound = true;
-    var _tx = 0;
-    tagRow.addEventListener('touchstart', function(e) { _tx = e.touches[0].clientX; }, { passive: true });
-    tagRow.addEventListener('touchmove', function(e) {
-      var dx = _tx - e.touches[0].clientX;
-      var btn = document.getElementById('item-tag-mgr');
-      var flt = this.querySelector('.tag-filter-input');
-      if (dx > 10) {
-        if (btn) btn.classList.add('show');
-        if (flt) flt.style.display = 'none';
-      } else if (dx < -10) {
-        if (btn) btn.classList.remove('show');
-        if (flt) flt.style.display = '';
+  // scroll + rAF 检测滚动位置，实时切换过滤框/✏️
+  if (!tagRow._scrollBound) {
+    tagRow._scrollBound = true;
+    var ticking = false;
+    tagRow.addEventListener('scroll', function() {
+      if (!ticking) {
+        requestAnimationFrame(function() {
+          var btn = document.getElementById('item-tag-mgr');
+          var flt = tagRow.querySelector('.tag-filter-input');
+          if (tagRow.scrollLeft > 0) {
+            if (btn) btn.classList.add('show');
+            if (flt) flt.style.display = 'none';
+          } else {
+            if (btn) btn.classList.remove('show');
+            if (flt) flt.style.display = '';
+          }
+          ticking = false;
+        });
+        ticking = true;
       }
     }, { passive: true });
+    // touchend 兜底：延迟检测回弹后的最终位置
     tagRow.addEventListener('touchend', function() {
       var self = this;
       setTimeout(function() {
+        if (self.scrollLeft > 0) return;
         var btn = document.getElementById('item-tag-mgr');
         var flt = self.querySelector('.tag-filter-input');
-        if (self.scrollLeft === 0) {
-          if (btn) btn.classList.remove('show');
-          if (flt) flt.style.display = '';
-        }
-      }, 150);
+        if (btn) btn.classList.remove('show');
+        if (flt) flt.style.display = '';
+      }, 200);
     }, { passive: true });
   }
   // 标签筛选输入框（不触发全量 render，避免输入失焦）
