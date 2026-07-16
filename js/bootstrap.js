@@ -77,12 +77,12 @@ export async function init() {
           await deleteItemRelations(id);
           await db.items.delete(id);
           render();
-        });
+        }, function() { render(); });
       } else if (type === 'container') {
         showDeleteDialog('容器', name + '（子容器将被一并删除）', async function() {
           await deleteContainerCascade(id);
           render();
-        });
+        }, function() { render(); });
       }
     });
     setSwipeMoveHandler(function(id, name) {

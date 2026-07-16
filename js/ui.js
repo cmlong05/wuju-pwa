@@ -87,12 +87,16 @@ export function emptyView(icon, title, desc) {
 }
 
 // 显示删除确认弹窗，所有实体删除操作都走同一套确认交互。
-export function showDeleteDialog(type, name, onConfirm) {
-  const overlay = h('div', { className: 'overlay', onclick: (e) => { if (e.target === overlay) overlay.remove(); } }, [
+export function showDeleteDialog(type, name, onConfirm, onCancel) {
+  function close() {
+    overlay.remove();
+    if (onCancel) onCancel();
+  }
+  const overlay = h('div', { className: 'overlay', onclick: (e) => { if (e.target === overlay) close(); } }, [
     h('div', { className: 'dialog' }, [
       h('div', { className: 'msg' }, '确定要删除「' + name + '」吗？'),
       h('div', { className: 'btns' }, [
-        h('button', { style: 'background:#E5E5EA;color:var(--text)', onclick: () => overlay.remove() }, '取消'),
+        h('button', { style: 'background:#E5E5EA;color:var(--text)', onclick: close }, '取消'),
         h('button', { style: 'background:var(--red);color:#fff', onclick: () => { overlay.remove(); onConfirm(); } }, '删除')
       ])
     ])
