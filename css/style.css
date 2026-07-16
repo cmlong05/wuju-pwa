@@ -162,6 +162,10 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
 .swipe-cell:last-of-type { border-radius: 0 0 var(--radius) var(--radius); }
 .swipe-cell:only-of-type { border-radius: var(--radius); }
 .swipe-cell:last-of-type .swipe-row { border-bottom: none; }
+.swipe-row {
+  position: relative;
+  z-index: 1;
+}
 .swipe-delete-bg {
   position: absolute;
   left: 0; top: 0; bottom: 0;
