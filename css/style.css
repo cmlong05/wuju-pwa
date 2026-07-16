@@ -300,6 +300,9 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
 
 .tag-filter-input {
   flex-shrink: 0;
+  position: sticky;
+  left: 0;
+  z-index: 2;
   width: 48px;
   padding: 4px 8px;
   border: 1px solid var(--separator);
@@ -314,11 +317,11 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   width: 90px;
   border-color: var(--tint);
 }
-/* ✏️ 管理标签 — sticky right，初始隐藏 */
+/* ✏️ 管理标签 — sticky left，初始隐藏，与过滤框互斥 */
 .chip-scroll .chip-manage {
   display: none;
   position: sticky;
-  right: 0;
+  left: 0;
   z-index: 2;
 }
 .chip-scroll .chip-manage.show {

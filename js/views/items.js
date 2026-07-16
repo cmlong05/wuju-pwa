@@ -177,12 +177,9 @@ export async function renderItemList(container) {
       chip.style.display = !kw2 || chip.dataset.tagName.toLowerCase().includes(kw2) ? '' : 'none';
     });
   });
-  // ✏️ 放在末尾；不溢出时始终显示
-  mgrBtn.classList.remove('show');
+  // ✏️ 放在过滤框后面，互斥显示
   tagRow.appendChild(mgrBtn);
-  if (tagRow.scrollWidth <= tagRow.clientWidth) {
-    mgrBtn.classList.add('show');
-  }
+  mgrBtn.classList.remove('show');
 
   // touchmove 方向检测：左滑→✏️显+过滤框隐，右滑→恢复
   if (!tagRow._touchBound) {
