@@ -146,6 +146,9 @@ export async function renderItemList(container) {
     className: 'tag-filter-input'
   });
   tagRow.appendChild(tagFilterInput);
+  // ✏️ 紧挨在过滤框后面，互斥显示
+  tagRow.appendChild(mgrBtn);
+  mgrBtn.classList.remove('show');
   // 选中标签排到前面，按筛选词过滤
   const kw = (state.tagFilter || '').toLowerCase();
   const sorted = [...getTagsList()]
@@ -177,20 +180,22 @@ export async function renderItemList(container) {
       chip.style.display = !kw2 || chip.dataset.tagName.toLowerCase().includes(kw2) ? '' : 'none';
     });
   });
-  // ✏️ 放在过滤框后面，互斥显示
-  tagRow.appendChild(mgrBtn);
-  mgrBtn.classList.remove('show');
 
-  // touchmove 方向检测：左滑→✏️显+过滤框隐，右滑→恢复
-  if (!tagRow._touchBound) {
-    tagRow._touchBound = true;
+  // touchmove 方向检测：左滑→✏️显+过滤框隐，右滑→恢复（document 级别）
+  if (!window._tagTouchBound) {
+    window._tagTouchBound = true;
     var _tx = 0;
-    tagRow.addEventListener('touchstart', function(e) { _tx = e.touches[0].clientX; }, { passive: true });
-    tagRow.addEventListener('touchmove', function(e) {
+    document.addEventListener('touchstart', function(e) {
+      if (!e.target.closest('#item-tag-row')) return;
+      _tx = e.touches[0].clientX;
+    }, { passive: true });
+    document.addEventListener('touchmove', function(e) {
+      if (!e.target.closest('#item-tag-row')) return;
+      var tr = document.getElementById('item-tag-row');
+      if (!tr || tr.scrollWidth <= tr.clientWidth) return;
       var dx = _tx - e.touches[0].clientX;
       var btn = document.getElementById('item-tag-mgr');
-      var flt = this.querySelector('.tag-filter-input');
-      if (tagRow.scrollWidth <= tagRow.clientWidth) return;
+      var flt = tr.querySelector('.tag-filter-input');
       if (dx > 10) {
         if (btn) btn.classList.add('show');
         if (flt) flt.style.display = 'none';
