@@ -141,6 +141,21 @@ export async function renderItemList(container) {
     mgrBtn = h('button', { id: 'item-tag-mgr', className: 'chip chip-manage', onclick: () => showTagManager() }, '✏️');
   }
   tagRow.appendChild(mgrBtn);
+
+  // 左滑后显示 ✏️，回原位隐藏
+  if (!tagRow._scrollBound) {
+    tagRow._scrollBound = true;
+    tagRow.addEventListener('scroll', function() {
+      var btn = document.getElementById('item-tag-mgr');
+      if (!btn) return;
+      if (this.scrollLeft > 0) btn.classList.add('show');
+      else btn.classList.remove('show');
+    }, { passive: true });
+  }
+  // 内容不溢出时始终显示 ✏️
+  if (tagRow.scrollWidth <= tagRow.clientWidth) {
+    mgrBtn.classList.add('show');
+  }
   // 标签筛选输入框（不触发全量 render，避免输入失焦）
   const tagFilterInput = h('input', {
     type: 'text', placeholder: '过滤...', value: state.tagFilter,
