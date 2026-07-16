@@ -217,6 +217,7 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
 #swipe-backdrop .bd-body:has(#item-chip-row) {
   display: flex;
   flex-direction: column;
+  padding-bottom: 0; /* #tabs 在文档流内，去掉预留空隙让标签栏贴住底部菜单 */
 }
 #content:has(#item-chip-row) > *,
 #swipe-backdrop .bd-body:has(#item-chip-row) > * { flex-shrink: 0; }
