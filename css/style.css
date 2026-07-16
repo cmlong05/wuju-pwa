@@ -311,15 +311,31 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   width: 90px;
   border-color: var(--tint);
 }
-/* ✏️ 管理标签 — 初始隐藏，左滑后出现并固定右侧 */
-.chip-scroll .chip-manage {
-  display: none;
+/* ✏️ 管理标签 — 在滚动容器外，绝对定位右侧，初始隐藏 */
+.tag-row-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
-.chip-scroll .chip-manage.pinned {
+.tag-row-wrap .chip-scroll {
+  flex: 1;
+  min-width: 0;
+}
+.tag-row-wrap .chip-manage {
+  flex-shrink: 0;
+  display: none;
+  margin-right: 0;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  background: var(--card-bg);
+  color: var(--text);
+  box-shadow: -2px 0 4px rgba(0,0,0,.05);
+}
+.tag-row-wrap .chip-manage.pinned {
   display: block;
-  position: sticky;
-  right: 0;
-  z-index: 2;
 }
 .tag-filter-input::placeholder { color: var(--text-tertiary); }
 

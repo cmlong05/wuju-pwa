@@ -129,21 +129,38 @@ export async function renderItemList(container) {
     mainWrap.appendChild(listWrap);
   }
 
+  // 包裹层：滚动区域 + 右边缘 ✏️（在滚动容器外，不干扰滚动）
+  let wrap = document.getElementById('item-tag-wrap');
+  if (!wrap) {
+    wrap = h('div', { id: 'item-tag-wrap', className: 'tag-row-wrap', style: 'margin-top:4px' });
+    container.appendChild(wrap);
+  }
+
   let tagRow = document.getElementById('item-tag-row');
-  if (tagRow) tagRow.innerHTML = '';
-  else {
-    tagRow = h('div', { id: 'item-tag-row', className: 'chip-scroll', style: 'margin-top:4px' });
-    // 左滑后 ✏️ 出现并固定右侧；回原位隐藏
+  if (!tagRow) {
+    tagRow = h('div', { id: 'item-tag-row', className: 'chip-scroll' });
+    wrap.appendChild(tagRow);
+  } else {
+    tagRow.innerHTML = '';
+  }
+
+  // ✏️ 放在 scroll 容器外，初始隐藏
+  let mgrBtn = wrap.querySelector('.chip-manage');
+  if (!mgrBtn) {
+    mgrBtn = h('button', { className: 'chip-manage', onclick: () => showTagManager() }, '✏️');
+    wrap.appendChild(mgrBtn);
+  }
+
+  // 左滑后显示 ✏️，回原位隐藏
+  if (!tagRow._scrollBound) {
+    tagRow._scrollBound = true;
     tagRow.addEventListener('scroll', function() {
-      var btn = this.querySelector('.chip-manage');
-      if (!btn) return;
-      if (this.scrollLeft > 0) {
-        btn.classList.add('pinned');
-      } else {
-        btn.classList.remove('pinned');
+      var btn = this.parentNode.querySelector('.chip-manage');
+      if (btn) {
+        if (this.scrollLeft > 0) btn.classList.add('pinned');
+        else btn.classList.remove('pinned');
       }
     }, { passive: true });
-    container.appendChild(tagRow);
   }
   // 标签筛选输入框（不触发全量 render，避免输入失焦）
   const tagFilterInput = h('input', {
@@ -182,13 +199,6 @@ export async function renderItemList(container) {
       chip.style.display = !kw2 || chip.dataset.tagName.toLowerCase().includes(kw2) ? '' : 'none';
     });
   });
-  tagRow.appendChild(h('button', {
-    className: 'chip chip-manage',
-    onclick: () => showTagManager(),
-    style: 'font-size:14px'
-  }, '✏️'));
-  container.appendChild(tagRow);
-
   await renderItemRows();
 }
 
