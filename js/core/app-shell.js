@@ -176,11 +176,12 @@ function _resetApp() {
   _hideBackdrop();
 }
 
-// ── 列表行滑动操作手势（右滑删除 + 左滑移动）──
+// ── 列表行滑动操作手势（右滑搜索 + 左滑改标签 / 容器右滑删除）──
 let _swipeDel = null;
 let _openSwipeCell = null;
 let _swipeDeleteHandler = null;
 let _swipeMoveHandler = null;
+let _swipeSearchHandler = null;
 
 export function setSwipeDeleteHandler(handler) {
   _swipeDeleteHandler = handler;
@@ -188,6 +189,10 @@ export function setSwipeDeleteHandler(handler) {
 
 export function setSwipeMoveHandler(handler) {
   _swipeMoveHandler = handler;
+}
+
+export function setSwipeSearchHandler(handler) {
+  _swipeSearchHandler = handler;
 }
 
 export function initSwipeDelete() {
@@ -242,14 +247,29 @@ export function initSwipeDelete() {
     var id = cell.dataset.deleteId;
     var name = cell.dataset.deleteName || '';
 
-    if (dx > 50 && _swipeDeleteHandler) {
-      // 触发删除 — 停在当前位置，不弹回也不飞出
-      if (row) row.style.transition = 'none';
-      _openSwipeCell = null;
-      _swipeDel = null;
-      _swipeDeleteHandler(type, id, name);
+    if (dx > 50) {
+      // 右滑触发
+      if (type === 'item' && _swipeSearchHandler) {
+        // 物品行 → 搜索
+        if (row) row.style.transition = 'none';
+        _openSwipeCell = null;
+        _swipeDel = null;
+        _swipeSearchHandler(id, name);
+      } else if (type === 'container' && _swipeDeleteHandler) {
+        // 容器行 → 删除
+        if (row) row.style.transition = 'none';
+        _openSwipeCell = null;
+        _swipeDel = null;
+        _swipeDeleteHandler(type, id, name);
+      } else {
+        if (row) {
+          row.style.transition = 'transform 0.2s ease-out';
+          row.style.transform = 'translateX(0)';
+        }
+        _swipeDel = null;
+      }
     } else if (dx < -50 && _swipeMoveHandler) {
-      // 触发移动 — 停在当前位置
+      // 左滑 → 改标签（仅物品行有 data-has-move）
       if (row) row.style.transition = 'none';
       _swipeDel = null;
       _swipeMoveHandler(id, name);
