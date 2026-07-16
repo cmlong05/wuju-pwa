@@ -107,10 +107,6 @@ export async function renderItemList(container) {
     chipRow = h('div', { id: 'item-chip-row', className: 'chip-scroll' });
     container.appendChild(chipRow);
   }
-  chipRow.appendChild(h('button', {
-    className: 'chip' + (category === null ? ' selected' : ''),
-    onclick: () => { state.itemCategory = null; render(); }
-  }, '全部'));
   getCategoriesList().forEach(c => {
     chipRow.appendChild(h('button', {
       className: 'chip' + (category === c.name ? ' selected' : ''),
