@@ -239,7 +239,20 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   -ms-overflow-style: none;
 }
 .item-cat-col::-webkit-scrollbar { display: none; }
-.item-cat-col .chip { overflow: hidden; text-overflow: ellipsis; }
+.item-cat-col .chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+.item-cat-col .chip .cat-chip-icon { font-size: 18px; line-height: 1; }
+.item-cat-col .chip .cat-chip-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .item-list-wrap {
   flex: 1;
   min-width: 0;

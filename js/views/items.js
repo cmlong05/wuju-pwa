@@ -112,7 +112,10 @@ export async function renderItemList(container) {
     catCol.appendChild(h('button', {
       className: 'chip' + (category === c.name ? ' selected' : ''),
       onclick: () => { state.itemCategory = (category === c.name ? null : c.name); render(); }
-    }, c.icon + ' ' + c.name));
+    }, [
+      h('span', { className: 'cat-chip-icon' }, c.icon),
+      h('span', { className: 'cat-chip-name' }, c.name)
+    ]));
   });
   catCol.appendChild(h('button', {
     className: 'chip chip-manage',
