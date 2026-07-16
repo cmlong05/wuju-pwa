@@ -212,6 +212,16 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   cursor: pointer; padding: 2px;
 }
 
+/* ── 分类/标签栏贴底：列表短时推到页面底部，列表长时跟在列表后 ── */
+#content:has(#item-chip-row),
+#swipe-backdrop .bd-body:has(#item-chip-row) {
+  display: flex;
+  flex-direction: column;
+}
+#content:has(#item-chip-row) > *,
+#swipe-backdrop .bd-body:has(#item-chip-row) > * { flex-shrink: 0; }
+#item-chip-row { margin-top: auto; }
+
 /* ── 分类筛选 ── */
 .chip-scroll {
   display: flex;
