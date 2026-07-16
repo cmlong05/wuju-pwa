@@ -156,10 +156,12 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
 .swipe-cell {
   position: relative;
   overflow: hidden;
+  background: var(--card-bg);
 }
-.swipe-cell:first-of-type .swipe-row { border-radius: var(--radius) var(--radius) 0 0; }
-.swipe-cell:last-of-type .swipe-row { border-bottom: none; border-radius: 0 0 var(--radius) var(--radius); }
-.swipe-cell:only-of-type .swipe-row { border-radius: var(--radius); }
+.swipe-cell:first-of-type { border-radius: var(--radius) var(--radius) 0 0; }
+.swipe-cell:last-of-type { border-radius: 0 0 var(--radius) var(--radius); }
+.swipe-cell:only-of-type { border-radius: var(--radius); }
+.swipe-cell:last-of-type .swipe-row { border-bottom: none; }
 .swipe-delete-bg {
   position: absolute;
   left: 0; top: 0; bottom: 0;
@@ -363,9 +365,6 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   cursor: pointer; gap: 8px;
 }
 .tree-row:active { background: #F0F0F5; }
-.swipe-cell:first-of-type .tree-row { border-radius: var(--radius) var(--radius) 0 0; }
-.swipe-cell:last-of-type .tree-row { border-bottom: none; border-radius: 0 0 var(--radius) var(--radius); }
-.swipe-cell:only-of-type .tree-row { border-radius: var(--radius); }
 .tree-row .expand { width: 24px; font-size: 12px; text-align: center; color: var(--text-tertiary); flex-shrink: 0; }
 .tree-row .container-icon { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
 .tree-row .container-name { font-weight: 500; flex: 1; }
