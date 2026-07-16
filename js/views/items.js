@@ -135,34 +135,10 @@ export async function renderItemList(container) {
     tagRow = h('div', { id: 'item-tag-row', className: 'chip-scroll', style: 'margin-top:4px' });
     container.appendChild(tagRow);
   }
-  // ✏️ 放在滚动容器内末尾，初始隐藏
+  // ✏️ 复用或新建
   let mgrBtn = document.getElementById('item-tag-mgr');
   if (!mgrBtn) {
     mgrBtn = h('button', { id: 'item-tag-mgr', className: 'chip chip-manage', onclick: () => showTagManager() }, '✏️');
-  }
-
-  // 左滑 ✏️ 显+过滤框隐；回零位恢复。scroll + touchend 双保险
-  if (!tagRow._scrollBound) {
-    tagRow._scrollBound = true;
-    function updateTagUI() {
-      var btn = document.getElementById('item-tag-mgr');
-      var flt = tagRow.querySelector('.tag-filter-input');
-      // 不溢出：过滤框 ✏️ 都显示
-      if (tagRow.scrollWidth <= tagRow.clientWidth) {
-        if (btn) btn.classList.add('show');
-        if (flt) flt.style.display = '';
-        return;
-      }
-      if (tagRow.scrollLeft > 0) {
-        if (btn) btn.classList.add('show');
-        if (flt) flt.style.display = 'none';
-      } else {
-        if (btn) btn.classList.remove('show');
-        if (flt) flt.style.display = '';
-      }
-    }
-    tagRow.addEventListener('scroll', updateTagUI, { passive: true });
-    tagRow.addEventListener('touchend', updateTagUI, { passive: true });
   }
   // 标签筛选输入框（不触发全量 render，避免输入失焦）
   const tagFilterInput = h('input', {
@@ -201,12 +177,8 @@ export async function renderItemList(container) {
       chip.style.display = !kw2 || chip.dataset.tagName.toLowerCase().includes(kw2) ? '' : 'none';
     });
   });
-  // ✏️ 附到末尾，初始隐藏，不溢出时直接可见
-  mgrBtn.classList.remove('show');
+  // ✏️ 放在末尾
   tagRow.appendChild(mgrBtn);
-  if (tagRow.scrollWidth <= tagRow.clientWidth) {
-    mgrBtn.classList.add('show');
-  }
   await renderItemRows();
 }
 
