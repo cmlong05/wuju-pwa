@@ -266,6 +266,7 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   display: flex;
   gap: 8px;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 4px 16px 8px;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -297,6 +298,9 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
 
 .tag-filter-input {
   flex-shrink: 0;
+  position: sticky;
+  left: 0;
+  z-index: 2;
   width: 48px;
   padding: 4px 8px;
   border: 1px solid var(--separator);
@@ -311,30 +315,14 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   width: 90px;
   border-color: var(--tint);
 }
-/* ✏️ 管理标签 — 在滚动容器外，绝对定位右侧，初始隐藏 */
-.tag-row-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-.tag-row-wrap .chip-scroll {
-  flex: 1;
-  min-width: 0;
-}
-.tag-row-wrap .chip-manage {
-  flex-shrink: 0;
+/* ✏️ 管理标签 — 在滚动容器末尾，sticky right，初始隐藏，左滑后出现 */
+.chip-scroll .chip-manage {
   display: none;
-  margin-right: 0;
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 14px;
-  border: none;
-  cursor: pointer;
-  background: var(--card-bg);
-  color: var(--text);
-  box-shadow: -2px 0 4px rgba(0,0,0,.05);
+  position: sticky;
+  right: 0;
+  z-index: 2;
 }
-.tag-row-wrap .chip-manage.pinned {
+.chip-scroll .chip-manage.pinned {
   display: block;
 }
 .tag-filter-input::placeholder { color: var(--text-tertiary); }

@@ -129,33 +129,24 @@ export async function renderItemList(container) {
     mainWrap.appendChild(listWrap);
   }
 
-  // 包裹层：滚动区域 + 右边缘 ✏️（在滚动容器外，不干扰滚动）
-  let wrap = document.getElementById('item-tag-wrap');
-  if (!wrap) {
-    wrap = h('div', { id: 'item-tag-wrap', className: 'tag-row-wrap', style: 'margin-top:4px' });
-    container.appendChild(wrap);
-  }
-
   let tagRow = document.getElementById('item-tag-row');
-  if (!tagRow) {
-    tagRow = h('div', { id: 'item-tag-row', className: 'chip-scroll' });
-    wrap.appendChild(tagRow);
-  } else {
-    tagRow.innerHTML = '';
+  if (tagRow) tagRow.innerHTML = '';
+  else {
+    tagRow = h('div', { id: 'item-tag-row', className: 'chip-scroll', style: 'margin-top:4px' });
+    container.appendChild(tagRow);
   }
-
-  // ✏️ 放在 scroll 容器外，初始隐藏
-  let mgrBtn = wrap.querySelector('.chip-manage');
+  // ✏️ 放在滚动容器内末尾，初始隐藏
+  let mgrBtn = document.getElementById('item-tag-mgr');
   if (!mgrBtn) {
-    mgrBtn = h('button', { className: 'chip-manage', onclick: () => showTagManager() }, '✏️');
-    wrap.appendChild(mgrBtn);
+    mgrBtn = h('button', { id: 'item-tag-mgr', className: 'chip chip-manage', onclick: () => showTagManager() }, '✏️');
   }
+  tagRow.appendChild(mgrBtn);
 
   // 左滑后显示 ✏️，回原位隐藏
   if (!tagRow._scrollBound) {
     tagRow._scrollBound = true;
     tagRow.addEventListener('scroll', function() {
-      var btn = this.parentNode.querySelector('.chip-manage');
+      var btn = document.getElementById('item-tag-mgr');
       if (btn) {
         if (this.scrollLeft > 0) btn.classList.add('pinned');
         else btn.classList.remove('pinned');
