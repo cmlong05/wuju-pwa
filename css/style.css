@@ -218,8 +218,9 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
 #swipe-backdrop .bd-body:has(.item-main) {
   display: flex;
   flex-direction: column;
-  padding-bottom: 0; /* #tabs 在文档流内，去掉预留空隙让标签栏贴住底部菜单 */
-  overflow: hidden;  /* 滚动交给内部分类栏/列表两栏 */
+  padding-bottom: 0;
+  overflow-y: auto;
+  overflow-x: clip;
 }
 .item-main {
   flex: 1;
@@ -267,6 +268,7 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   gap: 8px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
   padding: 4px 16px 8px;
   scrollbar-width: none;
   -ms-overflow-style: none;
