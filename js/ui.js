@@ -306,13 +306,18 @@ export async function showMoveToContainer(itemId) {
   if (!item) return;
   var containers = await db.containers.orderBy('name').toArray();
 
-  var overlay = h('div', { className: 'overlay', onclick: function(e) { if (e.target === overlay) overlay.remove(); } });
+  var overlay = h('div', { className: 'overlay', onclick: function(e) { if (e.target === overlay) close(); } });
   var dialog = h('div', { className: 'dialog', style: 'max-width:320px;max-height:70vh;overflow-y:auto;padding:0' });
+
+  function close() {
+    overlay.remove();
+    render();
+  }
 
   dialog.appendChild(h('div', { style: 'padding:14px 16px;font-weight:600;font-size:16px;border-bottom:1px solid var(--separator);display:flex;justify-content:space-between;align-items:center' }, [
     h('span', {}, '📦 ' + item.name + ' →'),
     h('button', {
-      onclick: function() { overlay.remove(); },
+      onclick: close,
       style: 'background:none;border:none;font-size:20px;color:var(--text-secondary);cursor:pointer'
     }, '✕')
   ]));
