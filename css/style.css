@@ -322,6 +322,8 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   position: sticky;
   left: 0;
   z-index: 2;
+  padding: 4px 10px;
+  font-size: 12px;
 }
 .chip-scroll .chip-manage.show {
   display: block;
