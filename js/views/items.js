@@ -130,7 +130,19 @@ export async function renderItemList(container) {
     tagRow = h('div', { id: 'item-tag-row', className: 'chip-scroll', style: 'margin-top:4px' });
     container.appendChild(tagRow);
   }
-  getTagsList().forEach(t => {
+  // 搜索按钮
+  tagRow.appendChild(h('button', {
+    className: 'chip tag-chip',
+    style: 'padding:4px 8px;font-size:14px',
+    onclick: () => render()
+  }, '🔍'));
+  // 选中标签排到前面
+  const sorted = [...getTagsList()].sort((a, b) => {
+    const sa = state.itemTags.has(a.name) ? 0 : 1;
+    const sb = state.itemTags.has(b.name) ? 0 : 1;
+    return sa - sb;
+  });
+  sorted.forEach(t => {
     const selected = state.itemTags.has(t.name);
     tagRow.appendChild(h('button', {
       className: 'chip tag-chip' + (selected ? ' selected' : ''),
