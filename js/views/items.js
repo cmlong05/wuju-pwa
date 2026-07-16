@@ -177,8 +177,36 @@ export async function renderItemList(container) {
       chip.style.display = !kw2 || chip.dataset.tagName.toLowerCase().includes(kw2) ? '' : 'none';
     });
   });
-  // ✏️ 放在末尾
+  // ✏️ 放在末尾；不溢出时始终显示
+  mgrBtn.classList.remove('show');
   tagRow.appendChild(mgrBtn);
+  if (tagRow.scrollWidth <= tagRow.clientWidth) {
+    mgrBtn.classList.add('show');
+  }
+
+  // scroll+rAF 检测：左滑→✏️显+过滤框隐，右滑回零→恢复
+  if (!tagRow._scrollBound) {
+    tagRow._scrollBound = true;
+    var ticking = false;
+    tagRow.addEventListener('scroll', function() {
+      if (!ticking) {
+        requestAnimationFrame(function() {
+          var btn = document.getElementById('item-tag-mgr');
+          var flt = tagRow.querySelector('.tag-filter-input');
+          if (tagRow.scrollWidth <= tagRow.clientWidth) { ticking = false; return; }
+          if (tagRow.scrollLeft > 0) {
+            if (btn) btn.classList.add('show');
+            if (flt) flt.style.display = 'none';
+          } else {
+            if (btn) btn.classList.remove('show');
+            if (flt) flt.style.display = '';
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
+    }, { passive: true });
+  }
   await renderItemRows();
 }
 
