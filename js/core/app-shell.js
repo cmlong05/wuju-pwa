@@ -243,14 +243,14 @@ export function initSwipeDelete() {
     var name = cell.dataset.deleteName || '';
 
     if (dx > 50 && _swipeDeleteHandler) {
-      // 触发删除
+      // 触发删除 — 先复位再弹窗，避免红蓝背景透出
       if (row) {
-        row.style.transition = 'transform 0.25s ease-out';
-        row.style.transform = 'translateX(100%)';
+        row.style.transition = 'transform 0.15s ease-out';
+        row.style.transform = 'translateX(0)';
       }
       _openSwipeCell = null;
       _swipeDel = null;
-      setTimeout(function() { _swipeDeleteHandler(type, id, name); }, 260);
+      _swipeDeleteHandler(type, id, name);
     } else if (dx < -50 && _swipeMoveHandler) {
       // 触发移动
       row.style.transition = 'transform 0.2s ease-out';
