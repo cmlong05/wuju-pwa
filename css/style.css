@@ -314,8 +314,12 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   width: 90px;
   border-color: var(--tint);
 }
-/* ✏️ 管理标签按钮 — 贴在右侧，初始不可见，左滑后固定 */
+/* ✏️ 管理标签 — 初始隐藏，左滑后出现并固定右侧（JS 控制 .sticky-right 类） */
 .chip-scroll .chip-manage {
+  display: none;
+}
+.chip-scroll .chip-manage.sticky-right {
+  display: block;
   position: sticky;
   right: 0;
   z-index: 2;

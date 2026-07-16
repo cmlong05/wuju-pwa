@@ -133,6 +133,16 @@ export async function renderItemList(container) {
   if (tagRow) tagRow.innerHTML = '';
   else {
     tagRow = h('div', { id: 'item-tag-row', className: 'chip-scroll', style: 'margin-top:4px' });
+    // 左滑后 ✏️ 固定右侧；回原位隐藏（首次创建时绑定）
+    tagRow.addEventListener('scroll', function() {
+      var btn = this.querySelector('.chip-manage');
+      if (!btn) return;
+      if (this.scrollLeft > 0) {
+        btn.classList.add('sticky-right');
+      } else {
+        btn.classList.remove('sticky-right');
+      }
+    }, { passive: true });
     container.appendChild(tagRow);
   }
   // 标签筛选输入框（不触发全量 render，避免输入失焦）
