@@ -153,7 +153,7 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
 }
 .card-row:active { background: #F0F0F5; }
 
-/* ── 左右滑动操作 ── */
+/* ── 右滑删除 ── */
 .swipe-cell {
   position: relative;
   overflow: hidden;
@@ -167,29 +167,23 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   position: relative;
   z-index: 1;
 }
-/* 共用：绝对定位背景 */
-.swipe-delete-bg, .swipe-search-bg, .swipe-tag-bg {
+.swipe-delete-bg {
   position: absolute;
-  top: 0; bottom: 0;
+  left: 0; top: 0; bottom: 0;
   width: 80px;
+  background: var(--red);
   display: flex;
   align-items: center;
   justify-content: center;
 }
-/* 容器 → 右滑删除 (左侧红色) */
-.swipe-delete-bg {
-  left: 0;
-  background: var(--red);
-}
-/* 物品 → 右滑搜索 (左侧蓝色) */
-.swipe-search-bg {
-  left: 0;
+.swipe-move-bg {
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 80px;
   background: var(--tint);
-}
-/* 物品 → 左滑改标签 (右侧绿色) */
-.swipe-tag-bg {
-  right: 0;
-  background: var(--green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .card-row-group { margin: 8px 16px; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
 

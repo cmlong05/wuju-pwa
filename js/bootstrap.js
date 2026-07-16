@@ -1,10 +1,10 @@
-import { render, setRenderers, switchTab, goBack, navigate, initSwipeBack, initSwipeDelete, setSwipeDeleteHandler, setSwipeMoveHandler, setSwipeSearchHandler } from './core/app-shell.js';
-import { loadCategories, loadTags, showDeleteDialog, showEditItemTags } from './ui.js';
+import { render, setRenderers, switchTab, goBack, navigate, initSwipeBack, initSwipeDelete, setSwipeDeleteHandler, setSwipeMoveHandler } from './core/app-shell.js';
+import { loadCategories, loadTags, showDeleteDialog, showMoveToContainer } from './ui.js';
 import { renderItemList, renderItemDetail, renderItemEdit, renderRelationEdit } from './views/items.js';
 import { renderContainerTree, renderContainerDetail, renderContainerEdit } from './views/containers.js';
 import { renderAlertView } from './views/alerts.js';
 import { startUniversalScan } from './scanner.js';
-import { db, seedSampleData, deleteContainerCascade } from './db.js';
+import { db, seedSampleData, deleteItemRelations, deleteContainerCascade } from './db.js';
 
 // 绑定底部 tab 点击事件，让切换入口保持在壳层，不散落到各页面里。
 function bindTabs() {
@@ -72,26 +72,21 @@ export async function init() {
     initSwipeBack();
     initSwipeDelete();
     setSwipeDeleteHandler(function(type, id, name) {
-      // 仅容器行走删除（物品右滑已改为搜索）
-      if (type === 'container') {
+      if (type === 'item') {
+        showDeleteDialog('物品', name, async function() {
+          await deleteItemRelations(id);
+          await db.items.delete(id);
+          render();
+        }, function() { render(); });
+      } else if (type === 'container') {
         showDeleteDialog('容器', name + '（子容器将被一并删除）', async function() {
           await deleteContainerCascade(id);
           render();
         }, function() { render(); });
       }
     });
-    // 物品左滑 → 改标签
     setSwipeMoveHandler(function(id, name) {
-      showEditItemTags(id);
-    });
-    // 物品右滑 → 搜索（聚焦搜索框填入物品名）
-    setSwipeSearchHandler(function(id, name) {
-      var searchInput = document.querySelector('.search-bar input');
-      if (searchInput) {
-        searchInput.value = name;
-        searchInput.focus();
-        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-      }
+      showMoveToContainer(id);
     });
     await render();
 
