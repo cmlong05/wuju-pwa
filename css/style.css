@@ -71,6 +71,7 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   height: 100%;
   max-width: 480px;
   margin: 0 auto;
+  background: var(--bg);
 }
 
 #header {
