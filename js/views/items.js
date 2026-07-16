@@ -95,30 +95,36 @@ export async function renderItemList(container) {
     if (input && input !== document.activeElement) input.value = search;
     if (clearBtn) clearBtn.style.display = search ? '' : 'none';
   }
-  let listWrap = document.getElementById('item-list-wrap');
-  if (!listWrap) {
-    listWrap = h('div', { id: 'item-list-wrap' });
-    container.appendChild(listWrap);
+  // 主区：左侧分类竖栏 + 右侧物品列表（class 供 CSS 用——backdrop 快照会剥掉 id）
+  let mainWrap = document.getElementById('item-main');
+  if (!mainWrap) {
+    mainWrap = h('div', { id: 'item-main', className: 'item-main' });
+    container.appendChild(mainWrap);
   }
 
-  let chipRow = document.getElementById('item-chip-row');
-  if (chipRow) chipRow.innerHTML = '';
+  let catCol = document.getElementById('item-cat-col');
+  if (catCol) catCol.innerHTML = '';
   else {
-    chipRow = h('div', { id: 'item-chip-row', className: 'chip-scroll' });
-    container.appendChild(chipRow);
+    catCol = h('div', { id: 'item-cat-col', className: 'item-cat-col' });
+    mainWrap.appendChild(catCol);
   }
   getCategoriesList().forEach(c => {
-    chipRow.appendChild(h('button', {
+    catCol.appendChild(h('button', {
       className: 'chip' + (category === c.name ? ' selected' : ''),
       onclick: () => { state.itemCategory = (category === c.name ? null : c.name); render(); }
     }, c.icon + ' ' + c.name));
   });
-  chipRow.appendChild(h('button', {
+  catCol.appendChild(h('button', {
     className: 'chip chip-manage',
     onclick: () => showCategoryManager(),
     style: 'font-size:14px'
   }, '✏️'));
-  container.appendChild(chipRow);
+
+  let listWrap = document.getElementById('item-list-wrap');
+  if (!listWrap) {
+    listWrap = h('div', { id: 'item-list-wrap', className: 'item-list-wrap' });
+    mainWrap.appendChild(listWrap);
+  }
 
   let tagRow = document.getElementById('item-tag-row');
   if (tagRow) tagRow.innerHTML = '';
