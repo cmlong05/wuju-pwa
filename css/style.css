@@ -304,10 +304,11 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   left: 0;
   z-index: 2;
   width: 48px;
-  padding: 4px 8px;
+  padding: 3px 8px;
   border: 1px solid var(--separator);
   border-radius: 6px;
   font-size: 12px;
+  line-height: 1.2;
   background: var(--card-bg);
   color: var(--text);
   outline: none;
