@@ -1,6 +1,5 @@
 /* ── 居雅 PWA — 数据导出/导入 ── */
 import { h } from './core/dom.js';
-import { render } from './core/app-shell.js';
 import { db, loadCategories, loadTags } from './db.js';
 
 const FORMAT_VERSION = 1;
@@ -143,6 +142,7 @@ export function showDataIODialog() {
                 if (!file) return;
                 try {
                   await importData(file);
+                  const { render } = await import('./core/app-shell.js');
                   await render();
                   alert('✅ 数据导入成功');
                 } catch (err) {
