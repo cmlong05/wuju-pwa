@@ -163,7 +163,7 @@ export async function renderContainerDetail(container, containerId) {
   container.appendChild(wrapper);
 
   const actionBtn = $('#header .action');
-  actionBtn.style.display = 'block';
+  actionBtn.style.display = 'flex';
   actionBtn.innerHTML = '';
   const qrIcon1 = h('span', { onclick: () => showQRModal('container', c.id, c.name, c.qrCode), style: 'margin-right:8px;display:inline-flex;align-items:center;cursor:pointer' });
   qrIcon1.innerHTML = '<svg width="1.6rem" height="1.6rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M9.75 5.25H5.25V9.75H9.75V5.25ZM3.75 3.75V11.25H11.25V3.75H3.75ZM9.75 14.25H5.25V18.75H9.75V14.25ZM3.75 12.75V20.25H11.25V12.75H3.75ZM14.25 5.25H18.75V9.75H14.25V5.25ZM12.75 11.25V3.75H20.25V11.25H12.75ZM12.75 17.25V12.75H14.25V17.25H12.75ZM6.75 6.75V8.25H8.25V6.75H6.75ZM6.75 17.25V15.75H8.25V17.25H6.75ZM15.75 6.75V8.25H17.25V6.75H15.75ZM18.75 20.25V18H20.25V20.25H18.75ZM18.75 12.75V15H17.25V12.75H15.75V18.75H12.75V20.25H17.25V16.5H20.25V15V12.75H18.75Z" fill="currentColor"/></svg>';
@@ -259,7 +259,7 @@ export async function renderContainerEdit(container, containerId, presetParentId
   container.appendChild(form);
 
   const actionBtn = $('#header .action');
-  actionBtn.style.display = 'block';
+  actionBtn.style.display = 'flex';
   actionBtn.innerHTML = '';
   const saveIcon1 = h('span', { onclick: async () => {
     const name = $('#cedit-name').value.trim();

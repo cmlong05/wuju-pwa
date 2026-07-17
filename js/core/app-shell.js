@@ -71,7 +71,7 @@ export async function render() {
   const actionBtn = header.querySelector('.action');
 
   tabs.style.display = (state.screen === 'tabs') ? 'flex' : 'none';
-  backBtn.style.display = (state.screen === 'tabs') ? 'none' : 'block';
+  backBtn.style.display = (state.screen === 'tabs') ? 'none' : 'flex';
   actionBtn.style.display = 'none';
 
   content.innerHTML = '';
@@ -94,7 +94,7 @@ export async function render() {
     };
 
     updateTabBar();
-    actionBtn.style.display = (state.tab === 'alerts' || state.tab === 'scan') ? 'none' : 'block';
+    actionBtn.style.display = (state.tab === 'alerts' || state.tab === 'scan') ? 'none' : 'flex';
     actionBtn.innerHTML = '';
     if (state.tab === 'items' || state.tab === 'spaces') {
       const addIcon = document.createElement('span');
