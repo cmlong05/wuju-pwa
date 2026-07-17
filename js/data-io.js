@@ -1,6 +1,7 @@
 /* ── 居雅 PWA — 数据导出/导入 ── */
 import { h } from './core/dom.js';
-import { db, loadCategories, loadTags } from './db.js';
+import { db } from './db.js';
+import { loadCategories, loadTags } from './ui.js';
 
 const FORMAT_VERSION = 1;
 
