@@ -162,13 +162,13 @@ export async function renderContainerDetail(container, containerId) {
       ])
     );
     itemRows.push(addItemRow());
-    itemRows.push(h('div', { className: 'detail-row', onclick: () => startContainerItemScan(containerId, () => navigate('container-detail', { containerId })), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, '📷 扫描添加物品'));
+    itemRows.push(h('div', { className: 'detail-row', onclick: () => startContainerItemScan(containerId, () => navigate('container-detail', { containerId })), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, '📷 扫描关联物品'));
     wrapper.appendChild(sectionBlock('物品 (' + items.length + ')', itemRows));
   } else {
     wrapper.appendChild(sectionBlock('物品 (0)', [
       h('div', { className: 'detail-row', style: 'color:var(--text-secondary)' }, '此容器中没有物品'),
       addItemRow(),
-      h('div', { className: 'detail-row', onclick: () => startContainerItemScan(containerId, () => navigate('container-detail', { containerId })), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, '📷 扫描添加物品')
+      h('div', { className: 'detail-row', onclick: () => startContainerItemScan(containerId, () => navigate('container-detail', { containerId })), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, '📷 扫描关联物品')
     ]));
   }
 
