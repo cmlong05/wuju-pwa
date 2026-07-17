@@ -222,13 +222,15 @@ export async function renderItemDetail(container, itemId) {
       h('div', { className: 'title' }, item.name),
       h('div', { className: 'meta' }, [
         h('span', { className: 'cat-tag' }, item.category),
+        h('button', { className: 'chip-edit-btn', onclick: () => showCategoryManager(), style: 'font-size:11px;padding:0 4px;border:none;background:transparent;color:var(--text-secondary);cursor:pointer' }, '✏️'),
         item.quantity != null ? h('span', { style: 'font-size:14px;color:var(--text-secondary)' }, '×' + item.quantity) : ''
       ]),
-      (item.tags && item.tags.length > 0)
-        ? h('div', { style: 'display:flex;flex-wrap:wrap;gap:4px;margin-top:6px' },
-            item.tags.map(t => h('span', { className: 'cat-tag', style: 'font-size:11px;padding:2px 8px' }, tagIcons[t] ? tagIcons[t] + ' ' + t : '🏷 ' + t))
-          )
-        : ''
+      h('div', { style: 'display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:6px' }, [
+        ...(item.tags && item.tags.length > 0
+          ? item.tags.map(t => h('span', { className: 'cat-tag', style: 'font-size:11px;padding:2px 8px' }, tagIcons[t] ? tagIcons[t] + ' ' + t : '🏷 ' + t))
+          : []),
+        h('button', { className: 'chip-edit-btn', onclick: () => showTagManager(), style: 'font-size:11px;padding:0 4px;border:none;background:transparent;color:var(--text-secondary);cursor:pointer' }, '✏️')
+      ])
     ])
   ]));
 
