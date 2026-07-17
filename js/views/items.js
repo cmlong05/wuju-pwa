@@ -229,7 +229,6 @@ export async function renderItemDetail(container, itemId) {
             item.tags.map(t => h('span', { className: 'cat-tag', style: 'font-size:11px;padding:2px 8px' }, tagIcons[t] ? tagIcons[t] + ' ' + t : '🏷 ' + t))
           )
         : ''
-      ])
     ])
   ]));
 
