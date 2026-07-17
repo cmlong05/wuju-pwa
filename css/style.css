@@ -47,7 +47,7 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
 }
 #swipe-backdrop .bd-header {
   background: var(--card-bg);
-  padding: 8px 16px;
+  padding: 4px 16px;
   font-size: 20px;
   font-weight: 700;
   border-bottom: 1px solid var(--separator);
@@ -76,7 +76,7 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
 
 #header {
   background: var(--card-bg);
-  padding: 8px 16px;
+  padding: 4px 16px;
   font-size: 20px;
   font-weight: 700;
   text-align: center;
