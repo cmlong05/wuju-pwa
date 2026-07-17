@@ -326,7 +326,7 @@ export async function renderItemEdit(container, itemId, presetContainerId, prese
   if (imageData) {
     imgPreview.appendChild(h('img', { src: imageData, style: 'max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border)' }));
   }
-  const imgInput = h('input', { type: 'file', id: 'edit-img', accept: 'image/*', capture: 'environment',
+  const imgInput = h('input', { type: 'file', id: 'edit-img', accept: 'image/*',
     style: 'width:100%;font-size:15px',
     onchange: (e) => {
       const file = e.target.files[0];

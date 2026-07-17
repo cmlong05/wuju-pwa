@@ -205,7 +205,7 @@ export async function renderContainerEdit(container, containerId, presetParentId
     cImgPreview.appendChild(h('img', { src: cImageData, style: 'max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border)' }));
   }
   form.appendChild(formGroup('照片', h('div', {}, [
-    h('input', { type: 'file', id: 'cedit-img', accept: 'image/*', capture: 'environment',
+    h('input', { type: 'file', id: 'cedit-img', accept: 'image/*',
       style: 'width:100%;font-size:15px',
       onchange: (e) => {
         const file = e.target.files[0];
