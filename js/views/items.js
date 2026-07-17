@@ -436,8 +436,8 @@ export async function renderItemEdit(container, itemId, presetContainerId, prese
         addedDate: Date.now()
       });
       if (presetQrCode) {
-        // 扫描添加 → 直接跳转物品详情
-        goBack();
+        // 扫描添加 → 替换栈顶为物品详情，避免 goBack+naviagte 双 render 竞态
+        state.stack.pop();
         navigate('item-detail', { itemId: newId });
       } else {
         goBack();
