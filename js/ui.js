@@ -254,13 +254,48 @@ export function showQRModal(type, id, name, savedCode) {
     if (textEl) textEl.textContent = currentText;
   }
 
+  // 显示强制替换确认弹窗：告知用户条码已被占用，提供强制替换选项。
+  function showForceReplaceConfirm(dupType, dupName, onConfirm) {
+    var cfmOverlay = h('div', { className: 'overlay', onclick: function(e) { if (e.target === cfmOverlay) cfmOverlay.remove(); } }, [
+      h('div', { className: 'dialog' }, [
+        h('div', { className: 'msg' }, [
+          h('div', {}, '此条码已被' + dupType + '「' + dupName + '」使用'),
+          h('div', { style: 'margin-top:4px;font-size:13px;color:var(--text-secondary)' }, '是否强制替换？原' + dupType + '的条码将被清除')
+        ]),
+        h('div', { className: 'btns' }, [
+          h('button', { style: 'background:#E5E5EA;color:var(--text)', onclick: function() { cfmOverlay.remove(); } }, '取消'),
+          h('button', { style: 'background:var(--red);color:#fff', onclick: function() { cfmOverlay.remove(); onConfirm(); } }, '强制替换')
+        ])
+      ])
+    ]);
+    document.body.appendChild(cfmOverlay);
+  }
+
   // 进入扫码替换流程，扫描新的码并检查重复后写回数据库。
   async function doScan() {
     showScanner(async function(scannedText) {
       var dupItem = await db.items.where('qrCode').equals(scannedText).filter(function(i) { return i.id !== id; }).first();
-      if (dupItem) { alert('此条码已被物品「' + dupItem.name + '」使用'); return; }
+      if (dupItem) {
+        showForceReplaceConfirm('物品', dupItem.name, async function() {
+          await db.items.update(dupItem.id, { qrCode: '' });
+          if (type === 'item') await db.items.update(id, { qrCode: scannedText });
+          else await db.containers.update(id, { qrCode: scannedText });
+          overlay.remove();
+          render();
+        });
+        return;
+      }
       var dupContainer = await db.containers.where('qrCode').equals(scannedText).filter(function(c) { return c.id !== id; }).first();
-      if (dupContainer) { alert('此条码已被容器「' + dupContainer.name + '」使用'); return; }
+      if (dupContainer) {
+        showForceReplaceConfirm('容器', dupContainer.name, async function() {
+          await db.containers.update(dupContainer.id, { qrCode: '' });
+          if (type === 'item') await db.items.update(id, { qrCode: scannedText });
+          else await db.containers.update(id, { qrCode: scannedText });
+          overlay.remove();
+          render();
+        });
+        return;
+      }
 
       if (type === 'item') {
         await db.items.update(id, { qrCode: scannedText });
