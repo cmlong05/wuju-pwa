@@ -52,6 +52,10 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   font-weight: 700;
   border-bottom: 1px solid var(--separator);
   color: var(--text);
+  /* 与 #header 等高：1.6rem 图标 + 按钮上下 padding 8px + 顶栏上下 padding 8px + 底边框 1px */
+  min-height: calc(1.6rem + 17px);
+  display: flex;
+  align-items: center;
   flex-shrink: 0;
 }
 #swipe-backdrop .bd-body {
