@@ -121,7 +121,7 @@ export async function render() {
     titleEl.style.cursor = '';
     switch (state.screen) {
       case 'item-detail': await renderers.renderItemDetail?.(content, state.params.itemId); break;
-      case 'item-edit': await renderers.renderItemEdit?.(content, state.params.itemId || null, state.params.presetContainerId || null); break;
+      case 'item-edit': await renderers.renderItemEdit?.(content, state.params.itemId || null, state.params.presetContainerId || null, state.params.presetQrCode || null); break;
       case 'container-detail': await renderers.renderContainerDetail?.(content, state.params.containerId); break;
       case 'container-edit': await renderers.renderContainerEdit?.(content, state.params.containerId || null, state.params.parentId || null); break;
       case 'relation-edit': await renderers.renderRelationEdit?.(content, state.params.itemId); break;

@@ -280,6 +280,23 @@ export function stopScanner() {
   _torchOn = false;
 }
 
+// 弹出无法识别的条码对话框，提供添加物品的入口。
+function showUnrecognizedDialog(text, onAdd) {
+  var overlay = h('div', { className: 'overlay', onclick: function(e) { if (e.target === overlay) overlay.remove(); } }, [
+    h('div', { className: 'dialog' }, [
+      h('div', { className: 'msg' }, [
+        h('div', { style: 'font-weight:600' }, '无法识别的条码/二维码'),
+        h('div', { style: 'margin-top:8px;font-size:13px;color:var(--text-secondary);word-break:break-all' }, text)
+      ]),
+      h('div', { className: 'btns' }, [
+        h('button', { style: 'background:#E5E5EA;color:var(--text)', onclick: function() { overlay.remove(); } }, '取消'),
+        h('button', { style: 'background:var(--tint);color:#fff', onclick: function() { overlay.remove(); onAdd(); } }, '添加物品')
+      ])
+    ])
+  ]);
+  document.body.appendChild(overlay);
+}
+
 // 统一扫描入口：识别内置 wuju 编码，或回退到绑定到条码的实体查找。
 export async function startUniversalScan(onResolved) {
   showScanner(async (text) => {
@@ -299,7 +316,9 @@ export async function startUniversalScan(onResolved) {
     const container = await db.containers.where('qrCode').equals(text).first();
     if (container) { onResolved?.({ kind: 'container', containerId: container.id }); return; }
 
-    alert('无法识别的条码/二维码:\n' + text + '\n\n请确认该条码已绑定到某个物品或容器');
+    showUnrecognizedDialog(text, function() {
+      onResolved?.({ kind: 'new-item', scannedText: text });
+    });
   }, 'auto');
 }
 

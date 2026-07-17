@@ -314,7 +314,7 @@ export async function renderItemDetail(container, itemId) {
 }
 
 // 渲染物品编辑页，负责创建和更新物品记录。
-export async function renderItemEdit(container, itemId, presetContainerId) {
+export async function renderItemEdit(container, itemId, presetContainerId, presetQrCode) {
   const item = itemId ? await db.items.get(itemId) : null;
   const isEdit = !!item;
 
@@ -430,6 +430,7 @@ export async function renderItemEdit(container, itemId, presetContainerId) {
       await db.items.put({
         id: uuid(),
         ...data,
+        qrCode: presetQrCode || undefined,
         addedDate: Date.now()
       });
     }

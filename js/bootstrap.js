@@ -47,6 +47,8 @@ export async function init() {
           navigate('item-detail', { itemId: result.itemId });
         } else if (result.kind === 'container') {
           navigate('container-detail', { containerId: result.containerId });
+        } else if (result.kind === 'new-item') {
+          navigate('item-edit', { presetQrCode: result.scannedText });
         }
       })
     });
