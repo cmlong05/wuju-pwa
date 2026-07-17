@@ -66,7 +66,7 @@ export async function importData(file) {
           h('div', { className: 'msg' }, [
             h('div', { style: 'margin-bottom:8px' }, '⚠️ 导入将覆盖当前全部数据'),
             h('div', { style: 'font-size:13px;color:var(--text-secondary)' },
-              '容器 ' + d.containers.length + ' · 物品 ' + d.items.length + ' · 分类 ' + d.categories.length + ' · 标签 ' + d.tags.length),
+              '位置 ' + d.containers.length + ' · 物品 ' + d.items.length + ' · 分类 ' + d.categories.length + ' · 标签 ' + d.tags.length),
             h('div', { style: 'font-size:11px;color:var(--text-tertiary);margin-top:4px' }, exportedAt)
           ]),
           h('div', { className: 'btns' }, [

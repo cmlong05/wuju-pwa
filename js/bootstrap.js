@@ -81,7 +81,7 @@ export async function init() {
           render();
         }, function() { render(); });
       } else if (type === 'container') {
-        showDeleteDialog('容器', name + '（子容器将被一并删除）', async function() {
+        showDeleteDialog('位置', name + '（子位置将被一并删除）', async function() {
           await deleteContainerCascade(id);
           render();
         }, function() { render(); });

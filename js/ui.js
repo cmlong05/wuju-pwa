@@ -287,7 +287,7 @@ export function showQRModal(type, id, name, savedCode) {
       }
       var dupContainer = await db.containers.where('qrCode').equals(scannedText).filter(function(c) { return c.id !== id; }).first();
       if (dupContainer) {
-        showForceReplaceConfirm('容器', dupContainer.name, async function() {
+        showForceReplaceConfirm('位置', dupContainer.name, async function() {
           await db.containers.update(dupContainer.id, { qrCode: '' });
           if (type === 'item') await db.items.update(id, { qrCode: scannedText });
           else await db.containers.update(id, { qrCode: scannedText });
@@ -315,7 +315,7 @@ export function showQRModal(type, id, name, savedCode) {
       }, '✕'),
       h('div', { style: 'margin-bottom:12px' }, [
         h('div', { style: 'font-size:11px;color:var(--text-secondary);margin-bottom:4px' },
-          type === 'item' ? '📦 物品' : '🗂️ 容器'),
+          type === 'item' ? '📦 物品' : '🗂️ 位置'),
         h('div', { style: 'font-weight:600;font-size:17px' }, name),
       ]),
       h('div', { id: 'qr-svg', style: 'display:flex;justify-content:center' }),
@@ -335,7 +335,7 @@ export function showQRModal(type, id, name, savedCode) {
   document.body.appendChild(overlay);
   refreshQR();
 }
-// ── 快速移动物品到容器 ──
+// ── 快速移动物品到位置 ──
 export async function showMoveToContainer(itemId) {
   var item = await db.items.get(itemId);
   if (!item) return;

@@ -1,7 +1,7 @@
 {
   "name": "居雅 — 家用物品管理",
   "short_name": "居雅",
-  "description": "管理家中物品、容器空间与保质期提醒",
+  "description": "管理家中物品、位置空间与保质期提醒",
   "start_url": "/wuju-pwa/",
   "scope": "/wuju-pwa/",
   "display": "standalone",

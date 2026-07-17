@@ -56,7 +56,7 @@ export async function showScanner(onScan, mode) {
 
   var canCamera = window.isSecureContext && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
   //扫面页面标题提示
-  var title = mode === 'container' ? '扫描容器条码/二维码' : '扫描条码/二维码';
+  var title = mode === 'container' ? '扫描位置条码/二维码' : '扫描条码/二维码';
 
   // 读取相册图片并尝试从静态图片里识别条码/二维码。
   function doFileScan(file) {
@@ -327,7 +327,7 @@ export function startAssociationScan(itemId, onDone) {
   showScanner(async (text) => {
     const wuju = parseWujuCode(text);
     if (!wuju || wuju.type !== 'container') {
-      alert('请扫描容器条码/二维码');
+      alert('请扫描位置条码/二维码');
       return;
     }
     const containerId = wuju.id;
@@ -336,7 +336,7 @@ export function startAssociationScan(itemId, onDone) {
       .and(r => r.relationType === '属于' && r.targetId === containerId)
       .count();
     if (existing > 0) {
-      alert('已关联到此容器');
+      alert('已关联到此位置');
       return;
     }
     await db.relations.put({
@@ -359,10 +359,10 @@ export function startLocationScan(itemId, onDone) {
     if (wuju && wuju.type === 'container') {
       containerId = wuju.id;
       const c = await db.containers.get(containerId);
-      if (!c) { alert('未找到该容器'); return; }
+      if (!c) { alert('未找到该位置'); return; }
     } else {
       const c = await db.containers.where('qrCode').equals(text).first();
-      if (!c) { alert('未识别到容器条码/二维码:\\n' + text + '\\n\\n请扫描已绑定到容器的条码'); return; }
+      if (!c) { alert('未识别到位置条码/二维码:\\n' + text + '\\n\\n请扫描已绑定到位置的条码'); return; }
       containerId = c.id;
     }
     await db.items.update(itemId, { containerId: containerId });
@@ -370,7 +370,7 @@ export function startLocationScan(itemId, onDone) {
   }, 'container');
 }
 
-// 扫描父容器，并在通过循环检查后更新容器层级关系。
+// 扫描父位置，并在通过循环检查后更新位置层级关系。
 export function startContainerParentScan(containerId, onDone) {
   showScanner(async (text) => {
     var parentId = '';
@@ -379,14 +379,14 @@ export function startContainerParentScan(containerId, onDone) {
       parentId = wuju.id;
     } else {
       const c = await db.containers.where('qrCode').equals(text).first();
-      if (!c) { alert('未识别到容器条码/二维码:\\n' + text + '\\n\\n请扫描已绑定到容器的条码'); return; }
+      if (!c) { alert('未识别到位置条码/二维码:\\n' + text + '\\n\\n请扫描已绑定到位置的条码'); return; }
       parentId = c.id;
     }
-    if (parentId === containerId) { alert('不能将自己设为父容器'); return; }
+    if (parentId === containerId) { alert('不能将自己设为父位置'); return; }
     const descIds = await getAllDescendantIds(containerId);
-    if (descIds.includes(parentId)) { alert('不能将子容器设为父容器（会造成循环）'); return; }
+    if (descIds.includes(parentId)) { alert('不能将子位置设为父位置（会造成循环）'); return; }
     const target = await db.containers.get(parentId);
-    if (!target) { alert('未找到该容器'); return; }
+    if (!target) { alert('未找到该位置'); return; }
     await db.containers.update(containerId, { parentId: parentId });
     onDone?.(parentId);
   }, 'container');
@@ -406,7 +406,7 @@ export function startContainerItemScan(containerId, onDone) {
     }
     const item = await db.items.get(itemId);
     if (!item) { alert('未找到该物品'); return; }
-    if (item.containerId === containerId) { alert('该物品已在此容器中'); return; }
+    if (item.containerId === containerId) { alert('该物品已在此位置中'); return; }
     await db.items.update(itemId, { containerId: containerId });
     onDone?.(itemId);
   }, 'auto');
