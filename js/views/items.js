@@ -426,15 +426,23 @@ export async function renderItemEdit(container, itemId, presetContainerId, prese
 
     if (isEdit) {
       await db.items.update(itemId, data);
+      goBack();
     } else {
+      const newId = uuid();
       await db.items.put({
-        id: uuid(),
+        id: newId,
         ...data,
         qrCode: presetQrCode || undefined,
         addedDate: Date.now()
       });
+      if (presetQrCode) {
+        // 扫描添加 → 直接跳转物品详情
+        goBack();
+        navigate('item-detail', { itemId: newId });
+      } else {
+        goBack();
+      }
     }
-    goBack();
   }, style: 'display:inline-flex;align-items:center;cursor:pointer' });
   saveIcon2.innerHTML = '<svg width="1.6rem" height="1.6rem" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none"><polygon points="17 2 2 2 2 22 7 22 7 13 17 13 17 22 22 22 22 7 17 2" fill="currentColor" opacity="0.15"/><polygon points="17 2 2 2 2 22 7 22 7 13 17 13 17 22 22 22 22 7 17 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="miter"/><line x1="7" y1="7" x2="15" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="7" y1="22" x2="17" y2="22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
   actionBtn.appendChild(saveIcon2);
