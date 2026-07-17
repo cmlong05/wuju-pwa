@@ -222,14 +222,13 @@ export async function renderItemDetail(container, itemId) {
       h('div', { className: 'title' }, item.name),
       h('div', { className: 'meta' }, [
         h('span', { className: 'cat-tag' }, item.category),
-        h('button', { className: 'chip-edit-btn', onclick: () => showCategoryManager(), style: 'font-size:11px;padding:0 4px;border:none;background:transparent;color:var(--text-secondary);cursor:pointer' }, '✏️'),
         item.quantity != null ? h('span', { style: 'font-size:14px;color:var(--text-secondary)' }, '×' + item.quantity) : ''
       ]),
-      h('div', { style: 'display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:6px' }, [
-        ...(item.tags && item.tags.length > 0
-          ? item.tags.map(t => h('span', { className: 'cat-tag', style: 'font-size:11px;padding:2px 8px' }, tagIcons[t] ? tagIcons[t] + ' ' + t : '🏷 ' + t))
-          : []),
-        h('button', { className: 'chip-edit-btn', onclick: () => showTagManager(), style: 'font-size:11px;padding:0 4px;border:none;background:transparent;color:var(--text-secondary);cursor:pointer' }, '✏️')
+      (item.tags && item.tags.length > 0)
+        ? h('div', { style: 'display:flex;flex-wrap:wrap;gap:4px;margin-top:6px' },
+            item.tags.map(t => h('span', { className: 'cat-tag', style: 'font-size:11px;padding:2px 8px' }, tagIcons[t] ? tagIcons[t] + ' ' + t : '🏷 ' + t))
+          )
+        : ''
       ])
     ])
   ]));
@@ -355,7 +354,10 @@ export async function renderItemEdit(container, itemId, presetContainerId, prese
   getCategoriesList().forEach(c => {
     catSelect.appendChild(h('option', { value: c.name, selected: item?.category === c.name || (!item && c.name === '其他') ? 'selected' : undefined }, c.icon + ' ' + c.name));
   });
-  form.appendChild(formGroup('分类', catSelect));
+  form.appendChild(formGroup('分类', h('div', { style: 'display:flex;align-items:center;gap:4px' }, [
+    catSelect,
+    h('button', { type: 'button', style: 'padding:6px 2px;border:none;background:transparent;font-size:18px;cursor:pointer;color:var(--text-secondary)', onclick: () => showCategoryManager() }, '✏️')
+  ])));
 
   const tagGrid = h('div', { id: 'edit-tags', style: 'display:flex;flex-wrap:wrap;gap:6px' });
   const itemTags = item?.tags || [];
@@ -373,7 +375,10 @@ export async function renderItemEdit(container, itemId, presetContainerId, prese
     }, t.icon + ' ' + t.name);
     tagGrid.appendChild(btn);
   });
-  form.appendChild(formGroup('标签', tagGrid));
+  form.appendChild(formGroup('标签', h('div', { style: 'display:flex;align-items:flex-start;gap:4px' }, [
+    tagGrid,
+    h('button', { type: 'button', style: 'padding:6px 2px;border:none;background:transparent;font-size:18px;cursor:pointer;color:var(--text-secondary);flex-shrink:0', onclick: () => showTagManager() }, '✏️')
+  ])));
 
   const hasExpiry = !!item?.expiryDate;
   form.appendChild(toggleField('设置保质期', 'edit-has-expiry', hasExpiry, 'edit-expiry-row'));
