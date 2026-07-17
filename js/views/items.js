@@ -314,7 +314,7 @@ export async function renderItemDetail(container, itemId) {
 }
 
 // 渲染物品编辑页，负责创建和更新物品记录。
-export async function renderItemEdit(container, itemId) {
+export async function renderItemEdit(container, itemId, presetContainerId) {
   const item = itemId ? await db.items.get(itemId) : null;
   const isEdit = !!item;
 
@@ -379,8 +379,9 @@ export async function renderItemEdit(container, itemId) {
   form.appendChild(formGroup('', h('div', { id: 'edit-expiry-row', style: hasExpiry ? '' : 'display:none' }, [expiryInput])));
 
   const allContainers = await db.containers.orderBy('name').toArray();
+  const defaultContainerId = item ? item.containerId : (presetContainerId || '');
   const contSelect = h('select', { id: 'edit-container' });
-  contSelect.appendChild(h('option', { value: '', selected: !item?.containerId ? 'selected' : undefined }, '未归类'));
+  contSelect.appendChild(h('option', { value: '', selected: !defaultContainerId ? 'selected' : undefined }, '未归类'));
   // 批量构建 path map，避免逐个 getContainerPath 的 N*D 次 DB 查询
   const contMap = {};
   allContainers.forEach(c => { contMap[c.id] = c; });
@@ -396,7 +397,7 @@ export async function renderItemEdit(container, itemId) {
   for (const c of allContainers) {
     contSelect.appendChild(h('option', {
       value: c.id,
-      selected: item?.containerId === c.id ? 'selected' : undefined
+      selected: defaultContainerId === c.id ? 'selected' : undefined
     }, buildNamePath(c)));
   }
   form.appendChild(formGroup('存放位置', contSelect));
