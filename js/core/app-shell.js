@@ -1,4 +1,5 @@
 import { $, $$ } from './dom.js';
+import { showDataIODialog } from '../data-io.js';
 
 export const state = {
   screen: 'tabs',
@@ -94,8 +95,16 @@ export async function render() {
     };
 
     updateTabBar();
-    actionBtn.style.display = (state.tab === 'alerts' || state.tab === 'scan') ? 'none' : 'flex';
+    actionBtn.style.display = 'flex';
     actionBtn.innerHTML = '';
+
+    // 齿轮图标 — 数据导出/导入
+    const gearIcon = document.createElement('span');
+    gearIcon.style.cssText = 'display:inline-flex;align-items:center;cursor:pointer';
+    gearIcon.innerHTML = '<svg width="1.6rem" height="1.6rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" stroke-width="2"/><path d="m19.4 15-.17.3c-.47.82-.2 1.88.63 2.35l.28.17a1.99 1.99 0 0 1 .73 2.73l-.47.82a2 2 0 0 1-2.73.73l-.28-.17a1.95 1.95 0 0 0-2.35.63l-.17.28a2 2 0 0 1-3.46 0l-.17-.28a1.95 1.95 0 0 0-2.35-.63l-.28.17a2 2 0 0 1-2.73-.73l-.47-.82a2 2 0 0 1 .73-2.73l.28-.17c.81-.47 1.1-1.53.63-2.35l-.17-.3a2 2 0 0 1 1.73-3h.54c1 0 1.8-.78 1.84-1.77V9.7A1.98 1.98 0 0 1 9.7 7.84h.55a2 2 0 0 1 1.73-3l.3-.17a1.99 1.99 0 0 1 2.73.73l.47.82c.47.82 1.53 1.1 2.35.63l.28-.17a2 2 0 0 1 2.73.73l.47.82a1.99 1.99 0 0 1-.73 2.73l-.28.17c-.82.47-1.1 1.53-.63 2.35l.17.3a2 2 0 0 1-1.73 3h-.55a1.98 1.98 0 0 0-1.83 1.77v.54c-.04.99-.84 1.77-1.84 1.77h-.54a2 2 0 0 0-1.73 3Z" stroke="currentColor" stroke-width="2"/></svg>';
+    gearIcon.onclick = () => showDataIODialog();
+    actionBtn.appendChild(gearIcon);
+
     if (state.tab === 'items' || state.tab === 'spaces') {
       const addIcon = document.createElement('span');
       addIcon.style.cssText = 'display:inline-flex;align-items:center;cursor:pointer';
