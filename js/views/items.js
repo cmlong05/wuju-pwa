@@ -5,16 +5,21 @@ import { catIcons, tagIcons, getCategoriesList, getTagsList, showQRModal, showDe
 import { startAssociationScan, startLocationScan } from '../scanner.js';
 
 // 处理物品列表的搜索、筛选与排序结果，并把最终列表渲染到容器里。
+let _rowGen = 0;
 async function renderItemRows() {
+  const gen = ++_rowGen;
   const wrap = document.getElementById('item-list-wrap');
   if (!wrap) return;
-  wrap.innerHTML = '';
 
   const search = state.itemSearch;
   const category = state.itemCategory;
   const selectedTags = [...state.itemTags];
 
   let items = await db.items.orderBy('name').toArray();
+  // 丢弃过期调用：快速输入产生并发 renderItemRows，只用最新一次的结果
+  if (gen !== _rowGen) return;
+
+  wrap.innerHTML = '';
   if (category) items = items.filter(i => i.category === category);
   if (selectedTags.length > 0) items = items.filter(i => i.tags && selectedTags.every(t => i.tags.includes(t)));
   if (search) items = items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
