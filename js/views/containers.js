@@ -1,5 +1,5 @@
 import { $, h } from '../core/dom.js';
-import { state, navigate, goBack, render } from '../core/app-shell.js';
+import { state, navigate, replaceNavigate, goBack, render } from '../core/app-shell.js';
 import { db, getRootContainers, getContainerTotalItems, getEligibleParentContainers, deleteContainerCascade, getContainerPath, uuid } from '../db.js';
 import { showQRModal, showDeleteDialog, sectionBlock, rowLink, tagIcons, formGroup } from '../ui.js';
 import { startContainerParentScan, startContainerItemScan } from '../scanner.js';
@@ -278,17 +278,23 @@ export async function renderContainerEdit(container, containerId, presetParentId
     const color = colorEl ? colorEl.dataset.color : '#5B8FF9';
     const parentId = $('#cedit-parent').value;
     const notes = $('#cedit-notes').value;
+    let newContainerId = null;
 
     if (isEdit) {
       await db.containers.update(containerId, { name, icon, color, parentId, notes, image: cImageData });
     } else {
+      newContainerId = uuid();
       const maxSort = await db.containers.where('parentId').equals(parentId).count();
       await db.containers.put({
-        id: uuid(), name, icon, color, sortOrder: maxSort,
+        id: newContainerId, name, icon, color, sortOrder: maxSort,
         notes, parentId, createdAt: Date.now(), image: cImageData
       });
     }
-    goBack();
+    if (isEdit) {
+      goBack();
+    } else {
+      replaceNavigate('container-detail', { containerId: newContainerId });
+    }
   }, style: 'display:inline-flex;align-items:center;cursor:pointer' });
   saveIcon1.innerHTML = '<svg width="1.6rem" height="1.6rem" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none"><polygon points="17 2 2 2 2 22 7 22 7 13 17 13 17 22 22 22 22 7 17 2" fill="currentColor" opacity="0.15"/><polygon points="17 2 2 2 2 22 7 22 7 13 17 13 17 22 22 22 22 7 17 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="miter"/><line x1="7" y1="7" x2="15" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="7" y1="22" x2="17" y2="22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
   actionBtn.appendChild(saveIcon1);
