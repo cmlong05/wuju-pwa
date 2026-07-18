@@ -32,6 +32,19 @@ export function navigate(screen, params = {}) {
   render();
 }
 
+// 以替换方式跳转：当前页不入栈、不缓存 backdrop（用于新建完成后跳详情等场景）。
+export function replaceNavigate(screen, params = {}) {
+  if (state.screen === 'tabs') {
+    state.stack = [{ screen: 'tabs', params: { tab: state.tab } }];
+  } else if (state.stack.length > 0) {
+    state.stack.pop();
+  }
+  state.stack.push({ screen, params: { ...params } });
+  state.screen = screen;
+  state.params = params;
+  render();
+}
+
 // 返回上一层页面；如果没有历史，则回到首页 tabs。
 export function goBack() {
   _popBackdrop();

@@ -1,5 +1,5 @@
 import { $, h, formatDate, isExpired, isExpiringSoon } from '../core/dom.js';
-import { state, navigate, goBack, render } from '../core/app-shell.js';
+import { state, navigate, replaceNavigate, goBack, render } from '../core/app-shell.js';
 import { db, getContainerPath, getItemRelations, deleteItemRelations, uuid } from '../db.js';
 import { catIcons, tagIcons, getCategoriesList, getTagsList, showQRModal, showDeleteDialog, sectionBlock, rowItem, rowLink, formGroup, toggleField, emptyView, showTagManager, showCategoryManager } from '../ui.js';
 import { startAssociationScan, startLocationScan } from '../scanner.js';
@@ -441,13 +441,8 @@ export async function renderItemEdit(container, itemId, presetContainerId, prese
         qrCode: presetQrCode || undefined,
         addedDate: Date.now()
       });
-      if (presetQrCode) {
-        // 扫描添加 → 替换栈顶为物品详情，避免 goBack+naviagte 双 render 竞态
-        state.stack.pop();
-        navigate('item-detail', { itemId: newId });
-      } else {
-        goBack();
-      }
+      // 新建完成 → 替换栈顶为新物品详情，返回时仍回到来源页（首页/容器详情）
+      replaceNavigate('item-detail', { itemId: newId });
     }
   }, style: 'display:inline-flex;align-items:center;cursor:pointer' });
   saveIcon2.innerHTML = '<svg width="1.6rem" height="1.6rem" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none"><polygon points="17 2 2 2 2 22 7 22 7 13 17 13 17 22 22 22 22 7 17 2" fill="currentColor" opacity="0.15"/><polygon points="17 2 2 2 2 22 7 22 7 13 17 13 17 22 22 22 22 7 17 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="miter"/><line x1="7" y1="7" x2="15" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="7" y1="22" x2="17" y2="22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
