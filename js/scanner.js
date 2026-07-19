@@ -322,33 +322,39 @@ export async function startUniversalScan(onResolved) {
   }, 'auto');
 }
 
-// 扫描一个容器并把物品关联到该容器，适合从物品详情页发起。
+// 扫描一个物品并建立物品间关联，适合从物品详情页发起。
 export function startAssociationScan(itemId, onDone) {
   showScanner(async (text) => {
+    var targetItemId = '';
     const wuju = parseWujuCode(text);
-    if (!wuju || wuju.type !== 'container') {
-      alert('请扫描位置条码/二维码');
-      return;
+    if (wuju && wuju.type === 'item') {
+      targetItemId = wuju.id;
+    } else {
+      const target = await db.items.where('qrCode').equals(text).first();
+      if (!target) { alert('未识别到物品条码/二维码'); return; }
+      targetItemId = target.id;
     }
-    const containerId = wuju.id;
+    const targetItem = await db.items.get(targetItemId);
+    if (!targetItem) { alert('未找到该物品'); return; }
+    if (targetItemId === itemId) { alert('不能关联自己'); return; }
     const existing = await db.relations
       .where('sourceId').equals(itemId)
-      .and(r => r.relationType === '属于' && r.targetId === containerId)
+      .and(r => r.targetId === targetItemId)
       .count();
     if (existing > 0) {
-      alert('已关联到此位置');
+      alert('已关联过该物品');
       return;
     }
     await db.relations.put({
       id: uuid(),
       sourceId: itemId,
-      targetId: containerId,
-      relationType: '属于',
+      targetId: targetItemId,
+      relationType: '搭配',
       notes: '扫码关联',
       createdAt: Date.now()
     });
-    onDone?.(containerId);
-  }, 'container');
+    onDone?.();
+  }, 'auto');
 }
 
 // 扫描容器条码并直接写入物品位置，减少手动选择容器的步骤。
