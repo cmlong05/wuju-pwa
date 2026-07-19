@@ -1,5 +1,5 @@
 import { h } from './core/dom.js';
-import { render } from './core/app-shell.js';
+import { state, render } from './core/app-shell.js';
 import { db, getCategories, getTags, addCategory, deleteCategory, updateCategory, addTag, deleteTag, updateTag } from './db.js';
 import { showScanner } from './scanner.js';
 
@@ -207,22 +207,62 @@ export function showEntityManager(config) {
 }
 
 // 打开分类管理弹窗，并在完成后刷新主界面。
+// 仅刷新编辑页的分类下拉框，不重建整个表单，避免丢失用户已输入的名称等字段。
+function refreshCategorySelect() {
+  const catSelect = document.getElementById('edit-category');
+  if (!catSelect) return;
+  const currentValue = catSelect.value;
+  catSelect.innerHTML = '';
+  getCategoriesList().forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.name;
+    opt.textContent = c.icon + ' ' + c.name;
+    if (c.name === currentValue) opt.selected = true;
+    catSelect.appendChild(opt);
+  });
+}
+
+// 仅刷新编辑页的标签网格，不重建整个表单，避免丢失用户已输入的名称等字段。
+function refreshTagGrid() {
+  const tagGrid = document.getElementById('edit-tags');
+  if (!tagGrid) return;
+  const selectedNames = [...tagGrid.querySelectorAll('.chip.selected')].map(b => b.textContent.replace(/^[^\s]*\s/, ''));
+  tagGrid.innerHTML = '';
+  getTagsList().forEach(t => {
+    const checked = selectedNames.includes(t.name);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'chip tag-chip' + (checked ? ' selected' : '');
+    btn.style.cssText = (checked ? '' : 'opacity:0.5') + ';cursor:pointer';
+    btn.textContent = t.icon + ' ' + t.name;
+    btn.onclick = function() {
+      var isSel = this.classList.contains('selected');
+      if (isSel) { this.classList.remove('selected'); this.style.opacity = '0.5'; }
+      else { this.classList.add('selected'); this.style.opacity = '1'; }
+    };
+    tagGrid.appendChild(btn);
+  });
+}
+
+// 打开分类管理弹窗。编辑页中只局部刷新分类下拉框以保留表单数据；列表页走全量 render。
 export function showCategoryManager() {
   showEntityManager({
     title: '管理分类', listId: 'cat-list', newNameId: 'cat-new-name',
     items: getCategoriesList(), addFn: addCategory, deleteFn: deleteCategory,
     updateFn: updateCategory, reloadFn: loadCategories,
-    defaultIcon: '📦', itemLabel: '分类', completeFn: render
+    defaultIcon: '📦', itemLabel: '分类',
+    completeFn: state.screen === 'item-edit' ? refreshCategorySelect : render
   });
 }
 
-// 打开标签管理弹窗，并在完成后刷新主界面。
+// 打开标签管理弹窗。编辑页中只局部刷新标签网格以保留表单数据；列表页走全量 render。
 export function showTagManager() {
   showEntityManager({
     title: '管理标签', listId: 'tag-list', newNameId: 'tag-new-name',
     items: getTagsList(), addFn: addTag, deleteFn: deleteTag,
     updateFn: updateTag, reloadFn: loadTags,
-    defaultIcon: '🏷', itemLabel: '标签', completeFn: render
+    defaultIcon: '🏷', itemLabel: '标签',
+    completeFn: state.screen === 'item-edit' ? refreshTagGrid : render
   });
 }
 
