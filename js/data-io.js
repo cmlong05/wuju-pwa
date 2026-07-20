@@ -6,7 +6,8 @@ import { loadCategories, loadTags } from './ui.js';
 const FORMAT_VERSION = 1;
 
 // ── 导出全部数据为 JSON 并触发浏览器下载 ──
-export async function exportAllData() {
+// includeImages: true = 含图片, false = 不含图片（剔除 image 字段以减小文件体积）
+export async function exportAllData(includeImages = true) {
   try {
     const [containers, items, relations, categories, tags] = await Promise.all([
       db.containers.toArray(),
@@ -19,7 +20,13 @@ export async function exportAllData() {
     const payload = {
       version: FORMAT_VERSION,
       exportedAt: new Date().toISOString(),
-      data: { containers, items, relations, categories, tags }
+      data: {
+        containers: includeImages ? containers : containers.map(({ image, ...rest }) => rest),
+        items: includeImages ? items : items.map(({ image, ...rest }) => rest),
+        relations,
+        categories,
+        tags
+      }
     };
 
     const json = JSON.stringify(payload, null, 2);
@@ -124,9 +131,8 @@ export function showDataIODialog() {
       h('div', { className: 'btns', style: 'flex-direction:column;gap:10px' }, [
         h('button', {
           style: 'padding:14px;border-radius:8px;border:none;background:var(--tint-light);color:var(--tint);font-size:15px;font-weight:600;cursor:pointer',
-          onclick: async () => {
-            overlay.remove();
-            await exportAllData();
+          onclick: () => {
+            showExportOptionsDialog(overlay);
           }
         }, '📤 导出数据'),
         h('button', {
@@ -162,6 +168,43 @@ export function showDataIODialog() {
         style: 'margin-top:12px;padding:10px 24px;border-radius:8px;border:none;background:#E5E5EA;cursor:pointer;font-size:14px',
         onclick: () => overlay.remove()
       }, '关闭')
+    ])
+  ]);
+  document.body.appendChild(overlay);
+}
+
+// ── 导出选项对话框：含图片 / 不含图片 ──
+function showExportOptionsDialog(parentOverlay) {
+  const overlay = h('div', {
+    className: 'overlay',
+    onclick: (e) => { if (e.target === overlay) overlay.remove(); }
+  }, [
+    h('div', { className: 'dialog', style: 'max-width:280px;text-align:center' }, [
+      h('div', { style: 'font-weight:600;font-size:17px;margin-bottom:16px' }, '📤 导出选项'),
+      h('div', { style: 'font-size:13px;color:var(--text-secondary);margin-bottom:16px' },
+        '图片会显著增大备份文件体积，是否包含图片？'),
+      h('div', { className: 'btns', style: 'flex-direction:column;gap:10px' }, [
+        h('button', {
+          style: 'padding:14px;border-radius:8px;border:none;background:var(--tint-light);color:var(--tint);font-size:15px;font-weight:600;cursor:pointer',
+          onclick: async () => {
+            overlay.remove();
+            parentOverlay.remove();
+            await exportAllData(false);
+          }
+        }, '📋 不含图片'),
+        h('button', {
+          style: 'padding:14px;border-radius:8px;border:none;background:var(--tint);color:#fff;font-size:15px;font-weight:600;cursor:pointer',
+          onclick: async () => {
+            overlay.remove();
+            parentOverlay.remove();
+            await exportAllData(true);
+          }
+        }, '🖼️ 含图片')
+      ]),
+      h('button', {
+        style: 'margin-top:12px;padding:10px 24px;border-radius:8px;border:none;background:#E5E5EA;cursor:pointer;font-size:14px',
+        onclick: () => overlay.remove()
+      }, '取消')
     ])
   ]);
   document.body.appendChild(overlay);
