@@ -117,22 +117,10 @@ export function showEntityManager(config) {
       h('div', { style: 'font-weight:600;font-size:17px;margin-bottom:16px;text-align:center' }, title),
       h('div', { id: listId }),
       h('div', { style: 'margin-top:12px;border-top:1px solid var(--separator);padding-top:12px' }, [
-        h('div', { style: 'font-weight:500;font-size:14px;margin-bottom:8px' }, '添加新' + itemLabel),
-        h('div', { style: 'display:flex;gap:8px;align-items:center' }, [
-          h('input', { type: 'text', id: newNameId, placeholder: itemLabel + '名称', style: 'flex:1;padding:10px;border:1px solid var(--separator);border-radius:8px;font-size:15px' }),
-          h('button', {
-            style: 'padding:10px 16px;border-radius:8px;border:none;background:var(--tint);color:#fff;font-size:15px;cursor:pointer;white-space:nowrap',
-            onclick: async function() {
-              var name = document.getElementById(newNameId).value.trim();
-              if (!name) return;
-              await addFn(name, defaultIcon);
-              await reloadFn();
-              lastAddedName = name;
-              renderList();
-              document.getElementById(newNameId).value = '';
-            }
-          }, '添加')
-        ])
+        h('button', {
+          style: 'padding:10px 16px;border-radius:8px;border:none;background:var(--tint);color:#fff;font-size:15px;cursor:pointer;width:100%',
+          onclick: function() { startAdd(); }
+        }, '+ 添加新' + itemLabel)
       ]),
       h('div', { style: 'margin-top:12px;text-align:center' }, [
         h('button', {
@@ -203,6 +191,61 @@ export function showEntityManager(config) {
       emojiGrid,
       h('div', {}, [saveBtn, cancelBtn])
     ]));
+  }
+
+  // 在列表顶部插入一行添加表单，复用编辑态的名称输入 + emoji 选择，新增时可同时选图标。
+  function startAdd() {
+    renderList();
+    var list = document.getElementById(listId);
+    if (!list) return;
+    var newIcon = defaultIcon;
+
+    var addRow = h('div', { id: 'add-form-row', style: 'display:flex;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--separator);gap:8px;flex-direction:column' });
+    var inputRow = h('div', { style: 'display:flex;gap:4px;align-items:center;width:100%' });
+    var iconSpan = h('span', { style: 'font-size:20px' }, newIcon);
+    var input = h('input', { type: 'text', placeholder: itemLabel + '名称', style: 'flex:1;padding:8px;border:1px solid var(--tint);border-radius:8px;font-size:15px' });
+    inputRow.appendChild(iconSpan);
+    inputRow.appendChild(input);
+
+    var emojiGrid = h('div', { style: 'display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:8px' });
+    EMOJI_POOL.forEach(function(emoji) {
+      var borderStyle = emoji === newIcon ? '2px solid var(--tint)' : '1px solid var(--separator)';
+      var btn = h('button', {
+        style: 'border:' + borderStyle + ';background:white;border-radius:8px;padding:6px;font-size:18px;cursor:pointer',
+        onclick: function() {
+          newIcon = emoji;
+          iconSpan.textContent = emoji;
+          emojiGrid.querySelectorAll('button').forEach(function(b) { b.style.border = '1px solid var(--separator)'; });
+          btn.style.border = '2px solid var(--tint)';
+        }
+      }, emoji);
+      emojiGrid.appendChild(btn);
+    });
+
+    var btnRow = h('div', { style: 'margin-top:8px' });
+    var saveBtn = h('button', {
+      style: 'padding:8px 16px;border-radius:8px;border:none;background:var(--tint);color:#fff;font-size:14px;cursor:pointer',
+      onclick: async function() {
+        var newName = input.value.trim();
+        if (!newName) return;
+        await addFn(newName, newIcon);
+        await reloadFn();
+        lastAddedName = newName;
+        renderList();
+      }
+    }, '保存');
+    var cancelBtn = h('button', {
+      style: 'margin-left:8px;padding:8px 16px;border-radius:8px;border:none;background:#E5E5EA;font-size:14px;cursor:pointer',
+      onclick: function() { renderList(); }
+    }, '取消');
+    btnRow.appendChild(saveBtn);
+    btnRow.appendChild(cancelBtn);
+
+    addRow.appendChild(inputRow);
+    addRow.appendChild(emojiGrid);
+    addRow.appendChild(btnRow);
+    list.insertBefore(addRow, list.firstChild);
+    input.focus();
   }
 
   document.body.appendChild(overlay);
