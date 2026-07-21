@@ -2,7 +2,7 @@ import { $, h } from '../core/dom.js';
 import { state, navigate, replaceNavigate, switchTab, goBack, render } from '../core/app-shell.js';
 import { db, getRootContainers, getContainerTotalItems, getEligibleParentContainers, deleteContainerCascade, getContainerPath, uuid } from '../db.js';
 import { showQRModal, showDeleteDialog, sectionBlock, rowLink, tagIcons, formGroup } from '../ui.js';
-import { startContainerParentScan, startContainerItemScan, showScanner } from '../scanner.js';
+import { startContainerParentScan, startContainerItemScan, showScanner, parseWujuCode } from '../scanner.js';
 
 const CONTAINER_ICONS = ['🏠','🍽️','❄️','🗄️','👕','📚','🔨','💊','📁','📦','🧳','🧊'];
 const CONTAINER_COLORS = [
@@ -262,7 +262,28 @@ export async function renderContainerEdit(container, containerId, presetParentId
       selected: c?.parentId === root.id || (!isEdit && presetParentId === root.id) ? 'selected' : undefined
     }, root.icon + ' ' + root.name));
   }
-  form.appendChild(formGroup('父位置', parentSelect));
+  form.appendChild(formGroup('父位置', h('div', { style: 'display:flex;align-items:center;gap:4px' }, [
+    parentSelect,
+    h('button', { type: 'button', style: 'padding:6px 2px;border:none;background:transparent;font-size:18px;cursor:pointer;color:var(--text-secondary)', onclick: function() {
+      showScanner(async function(text) {
+        var foundId = '';
+        const wuju = parseWujuCode(text);
+        if (wuju && wuju.type === 'container') {
+          foundId = wuju.id;
+        } else {
+          const found = await db.containers.where('qrCode').equals(text).first();
+          if (found) foundId = found.id;
+        }
+        if (foundId && parentSelect.querySelector('option[value=\"' + foundId + '\"]')) {
+          parentSelect.value = foundId;
+        } else if (foundId) {
+          alert('该位置不能设为父位置（可能是自身或子位置）');
+        } else {
+          alert('未识别到位置条码/二维码');
+        }
+      }, 'container');
+    } }, '📷')
+  ])));
 
   form.appendChild(formGroup('备注', h('textarea', { id: 'cedit-notes' }, c?.notes || '')));
 
