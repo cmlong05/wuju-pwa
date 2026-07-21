@@ -2,7 +2,7 @@
 import { h } from './core/dom.js';
 import { db } from './db.js';
 import { loadCategories, loadTags } from './ui.js';
-import { getImageMaxWidth, setImageMaxWidth } from './image-utils.js';
+import { getImageMaxWidth, setImageMaxWidth, compressDataUrl } from './image-utils.js';
 
 // 图片最大宽度的预设选项
 const IMAGE_WIDTH_OPTIONS = [
@@ -53,6 +53,59 @@ export async function exportAllData(includeImages = true) {
   } catch (e) {
     alert('导出失败：' + (e.message || String(e)));
   }
+}
+
+// ── 压缩所有已有图片 ──
+export async function compressAllImages(maxWidth) {
+  if (!maxWidth || maxWidth <= 0) {
+    alert('当前设置为"不压缩"，无需处理');
+    return;
+  }
+
+  const containers = await db.containers.toArray();
+  const items = await db.items.toArray();
+  const cs = containers.filter(c => c.image);
+  const is = items.filter(i => i.image);
+  const total = cs.length + is.length;
+  if (total === 0) {
+    alert('没有需要压缩的图片');
+    return;
+  }
+
+  let compressed = 0;
+  let skipped = 0;
+
+  for (const c of cs) {
+    try {
+      const result = await compressDataUrl(c.image, maxWidth);
+      if (result !== c.image) {
+        await db.containers.update(c.id, { image: result });
+        compressed++;
+      } else {
+        skipped++;
+      }
+    } catch (e) {
+      skipped++;
+    }
+  }
+
+  for (const i of is) {
+    try {
+      const result = await compressDataUrl(i.image, maxWidth);
+      if (result !== i.image) {
+        await db.items.update(i.id, { image: result });
+        compressed++;
+      } else {
+        skipped++;
+      }
+    } catch (e) {
+      skipped++;
+    }
+  }
+
+  const { render } = await import('./core/app-shell.js');
+  await render();
+  alert('✅ 压缩完成：' + compressed + ' 张已压缩，' + skipped + ' 张无需处理');
 }
 
 // ── 导入 JSON 备份文件 ──
@@ -141,17 +194,25 @@ export function showDataIODialog() {
       // 图片压缩设置
       h('div', { style: 'margin-bottom:12px;text-align:left' }, [
         h('label', { style: 'display:block;font-size:13px;color:var(--text-secondary);margin-bottom:4px' }, '🖼️ 图片最大宽度'),
-        (() => {
-          const current = getImageMaxWidth();
-          const sel = h('select', {
-            style: 'width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border);font-size:14px;background:var(--bg)',
-            onchange: () => setImageMaxWidth(parseInt(sel.value, 10))
-          });
-          IMAGE_WIDTH_OPTIONS.forEach(opt => {
-            sel.appendChild(h('option', { value: String(opt.value), selected: opt.value === current ? '' : undefined }, opt.label));
-          });
-          return sel;
-        })()
+        h('div', { style: 'display:flex;gap:6px' }, [
+          (() => {
+            const current = getImageMaxWidth();
+            const sel = h('select', {
+              style: 'flex:1;padding:8px 10px;border-radius:6px;border:1px solid var(--border);font-size:14px;background:var(--bg)',
+              onchange: () => setImageMaxWidth(parseInt(sel.value, 10))
+            });
+            IMAGE_WIDTH_OPTIONS.forEach(opt => {
+              sel.appendChild(h('option', { value: String(opt.value), selected: opt.value === current ? '' : undefined }, opt.label));
+            });
+            return sel;
+          })(),
+          h('button', {
+            style: 'padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);font-size:12px;color:var(--tint);cursor:pointer;white-space:nowrap;flex-shrink:0',
+            onclick: async () => {
+              await compressAllImages(getImageMaxWidth());
+            }
+          }, '应用到已有')
+        ])
       ]),
       h('div', { style: 'font-size:11px;color:var(--text-tertiary);margin-bottom:14px;text-align:left' }, '添加图片时自动缩放至此宽度以下'),
       h('div', { className: 'btns', style: 'flex-direction:column;gap:10px' }, [

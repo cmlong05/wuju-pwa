@@ -72,3 +72,44 @@ export function compressImage(file, maxWidth) {
     img.src = url;
   });
 }
+
+/**
+ * 压缩已有的 dataURL 图片（用于批量压缩库中已有图片）。
+ * @param {string} dataUrl - base64 dataURL
+ * @param {number} maxWidth - 最大宽度（px），<=0 不压缩
+ * @returns {Promise<string>} 压缩后的 dataURL（无需压缩则返回原值）
+ */
+export function compressDataUrl(dataUrl, maxWidth) {
+  return new Promise((resolve) => {
+    if (!maxWidth || maxWidth <= 0) {
+      resolve(dataUrl);
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      if (w <= maxWidth) {
+        resolve(dataUrl);
+        return;
+      }
+
+      const ratio = maxWidth / w;
+      const newW = maxWidth;
+      const newH = Math.round(h * ratio);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = newW;
+      canvas.height = newH;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, newW, newH);
+
+      // 判断原格式：dataURL 以 image/png 开头则保留 PNG
+      const isPNG = dataUrl.startsWith('data:image/png');
+      resolve(canvas.toDataURL(isPNG ? 'image/png' : 'image/jpeg', 0.85));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
