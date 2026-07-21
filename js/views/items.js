@@ -328,7 +328,26 @@ export async function renderItemEdit(container, itemId, presetContainerId, prese
 
   const form = h('div', { className: 'form' });
   form.appendChild(formGroup('物品名称', h('input', { type: 'text', id: 'edit-name', value: item?.name || '', placeholder: '输入物品名称' })));
-  form.appendChild(formGroup('备注', h('textarea', { id: 'edit-notes' }, item?.notes || '')));
+
+  // 备注：可折叠，默认收起
+  (function() {
+    const g = h('div', { className: 'form-group fold-group' });
+    const head = h('div', { className: 'fold-header', onclick: function() {
+      const body = this.nextElementSibling;
+      const arrow = this.querySelector('.fold-arrow');
+      const hidden = body.style.display === 'none';
+      body.style.display = hidden ? '' : 'none';
+      arrow.style.transform = hidden ? 'rotate(90deg)' : '';
+    }}, [
+      h('label', { style: 'margin-bottom:0' }, '备注'),
+      h('span', { className: 'fold-arrow' }, '›')
+    ]);
+    const body = h('div', { className: 'fold-body', style: 'display:none;padding-top:6px' });
+    body.appendChild(h('textarea', { id: 'edit-notes' }, item?.notes || ''));
+    g.appendChild(head);
+    g.appendChild(body);
+    form.appendChild(g);
+  })();
 
   let imageData = item?.image || '';
   const imgPreview = h('div', { id: 'edit-img-preview', style: 'margin-top:8px;text-align:center' });
