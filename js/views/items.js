@@ -25,6 +25,8 @@ async function renderItemRows() {
   if (selectedTags.length > 0) items = items.filter(i => i.tags && selectedTags.every(t => i.tags.includes(t)));
   if (search) items = items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
 
+  state.itemListOrder = items.map(i => i.id);
+
   if (items.length === 0) {
     wrap.appendChild(emptyView(search || category ? '🔍' : '📦', search || category ? '没有找到' : '还没有物品', search || category ? '试试其他关键词' : '点击右上角 + 添加第一个物品'));
     return;
@@ -324,6 +326,65 @@ export async function renderItemDetail(container, itemId) {
   }), style: 'color:var(--red);display:inline-flex;align-items:center;cursor:pointer' });
   delIcon2.innerHTML = '<svg width="1.6rem" height="1.6rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16,7V4a1,1,0,0,0-1-1H9A1,1,0,0,0,8,4V7m4,4v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/><path d="M4,7H20M17.07,20.07,18,7H6l.93,13.07a1,1,0,0,0,1,.93h8.14A1,1,0,0,0,17.07,20.07Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   actionBtn.appendChild(delIcon2);
+
+  // ── 左右滑动切换物品 ──
+  const list = state.itemListOrder || [];
+  const curIdx = list.indexOf(itemId);
+  const hasPrev = curIdx > 0;
+  const hasNext = curIdx >= 0 && curIdx < list.length - 1;
+
+  if (hasPrev || hasNext) {
+    let sx = 0, sy = 0, dx = 0;
+    let active = false, horiz = false, locked = false;
+
+    const onStart = function(e) {
+      if (e.target.closest('button, a, input, select, textarea, .detail-row')) return;
+      var t = e.touches[0];
+      sx = t.clientX; sy = t.clientY; dx = 0;
+      active = true; horiz = false; locked = false;
+      wrapper.style.transition = 'none';
+      wrapper.style.opacity = '1';
+    };
+
+    const onMove = function(e) {
+      if (!active) return;
+      var t = e.touches[0];
+      var ndx = t.clientX - sx;
+      var ndy = t.clientY - sy;
+      if (!locked) {
+        if (Math.abs(ndx) > 8 || Math.abs(ndy) > 8) {
+          locked = true;
+          horiz = Math.abs(ndx) > Math.abs(ndy);
+        } else { return; }
+      }
+      if (!horiz) return;
+      dx = Math.max(-140, Math.min(140, ndx));
+      wrapper.style.transform = 'translateX(' + dx + 'px)';
+      wrapper.style.opacity = Math.max(0.3, 1 - Math.abs(dx) / 200);
+    };
+
+    const onEnd = function() {
+      if (!active) return;
+      active = false;
+      wrapper.style.transition = 'transform 0.25s ease-out, opacity 0.25s ease-out';
+      if (dx < -70 && hasNext) {
+        wrapper.style.transform = 'translateX(-110%)';
+        wrapper.style.opacity = '0';
+        setTimeout(function() { navigate('item-detail', { itemId: list[curIdx + 1] }); }, 280);
+      } else if (dx > 70 && hasPrev) {
+        wrapper.style.transform = 'translateX(110%)';
+        wrapper.style.opacity = '0';
+        setTimeout(function() { navigate('item-detail', { itemId: list[curIdx - 1] }); }, 280);
+      } else {
+        wrapper.style.transform = 'translateX(0)';
+        wrapper.style.opacity = '1';
+      }
+    };
+
+    wrapper.addEventListener('touchstart', onStart, { passive: true });
+    wrapper.addEventListener('touchmove', onMove, { passive: true });
+    wrapper.addEventListener('touchend', onEnd);
+  }
 }
 
 // 渲染物品编辑页，负责创建和更新物品记录。

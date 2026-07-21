@@ -11,6 +11,7 @@ export const state = {
   itemTags: new Set(),
   tagFilter: '',
   expandedContainers: new Set(),
+  itemListOrder: [],
 };
 
 let renderers = {};
