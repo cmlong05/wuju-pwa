@@ -3,6 +3,7 @@ import { state, navigate, replaceNavigate, switchTab, goBack, render } from '../
 import { db, getContainerPath, getItemRelations, deleteItemRelations, uuid } from '../db.js';
 import { catIcons, tagIcons, getCategoriesList, getTagsList, showQRModal, showDeleteDialog, sectionBlock, rowItem, rowLink, formGroup, toggleField, emptyView, showTagManager, showCategoryManager } from '../ui.js';
 import { startAssociationScan, startLocationScan, showScanner, parseWujuCode } from '../scanner.js';
+import { compressImage, getImageMaxWidth } from '../image-utils.js';
 
 // 处理物品列表的搜索、筛选与排序结果，并把最终列表渲染到容器里。
 let _rowGen = 0;
@@ -360,16 +361,12 @@ export async function renderItemEdit(container, itemId, presetContainerId, prese
   }
   const imgInput = h('input', { type: 'file', id: 'edit-img', accept: 'image/*',
     style: 'width:100%;font-size:15px',
-    onchange: (e) => {
+    onchange: async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        imageData = reader.result;
-        imgPreview.innerHTML = '';
-        imgPreview.appendChild(h('img', { src: imageData, style: 'max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border)' }));
-      };
-      reader.readAsDataURL(file);
+      imageData = await compressImage(file, getImageMaxWidth());
+      imgPreview.innerHTML = '';
+      imgPreview.appendChild(h('img', { src: imageData, style: 'max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border)' }));
     }
   });
   form.appendChild(formGroup('照片', h('div', {}, [imgInput, imgPreview])));

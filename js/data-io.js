@@ -2,6 +2,16 @@
 import { h } from './core/dom.js';
 import { db } from './db.js';
 import { loadCategories, loadTags } from './ui.js';
+import { getImageMaxWidth, setImageMaxWidth } from './image-utils.js';
+
+// 图片最大宽度的预设选项
+const IMAGE_WIDTH_OPTIONS = [
+  { label: '不压缩', value: 0 },
+  { label: '1920px', value: 1920 },
+  { label: '1280px', value: 1280 },
+  { label: '640px', value: 640 },
+  { label: '320px', value: 320 }
+];
 
 const FORMAT_VERSION = 1;
 
@@ -128,6 +138,22 @@ export function showDataIODialog() {
   }, [
     h('div', { className: 'dialog', style: 'max-width:300px;text-align:center' }, [
       h('div', { style: 'font-weight:600;font-size:17px;margin-bottom:16px' }, '📁 数据管理'),
+      // 图片压缩设置
+      h('div', { style: 'margin-bottom:12px;text-align:left' }, [
+        h('label', { style: 'display:block;font-size:13px;color:var(--text-secondary);margin-bottom:4px' }, '🖼️ 图片最大宽度'),
+        (() => {
+          const current = getImageMaxWidth();
+          const sel = h('select', {
+            style: 'width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border);font-size:14px;background:var(--bg)',
+            onchange: () => setImageMaxWidth(parseInt(sel.value, 10))
+          });
+          IMAGE_WIDTH_OPTIONS.forEach(opt => {
+            sel.appendChild(h('option', { value: String(opt.value), selected: opt.value === current ? '' : undefined }, opt.label));
+          });
+          return sel;
+        })()
+      ]),
+      h('div', { style: 'font-size:11px;color:var(--text-tertiary);margin-bottom:14px;text-align:left' }, '添加图片时自动缩放至此宽度以下'),
       h('div', { className: 'btns', style: 'flex-direction:column;gap:10px' }, [
         h('button', {
           style: 'padding:14px;border-radius:8px;border:none;background:var(--tint-light);color:var(--tint);font-size:15px;font-weight:600;cursor:pointer',

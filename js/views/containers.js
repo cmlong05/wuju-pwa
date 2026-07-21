@@ -3,6 +3,7 @@ import { state, navigate, replaceNavigate, switchTab, goBack, render } from '../
 import { db, getRootContainers, getContainerTotalItems, getEligibleParentContainers, deleteContainerCascade, getContainerPath, uuid, getAllDescendantIds } from '../db.js';
 import { showQRModal, showDeleteDialog, sectionBlock, rowLink, tagIcons, formGroup } from '../ui.js';
 import { startContainerParentScan, startContainerItemScan, showScanner, parseWujuCode } from '../scanner.js';
+import { compressImage, getImageMaxWidth } from '../image-utils.js';
 
 const CONTAINER_ICONS = ['🏠','🍽️','❄️','🗄️','👕','📚','🔨','💊','📁','📦','🧳','🧊'];
 const CONTAINER_COLORS = [
@@ -210,16 +211,12 @@ export async function renderContainerEdit(container, containerId, presetParentId
   form.appendChild(formGroup('照片', h('div', {}, [
     h('input', { type: 'file', id: 'cedit-img', accept: 'image/*',
       style: 'width:100%;font-size:15px',
-      onchange: (e) => {
+      onchange: async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-          cImageData = reader.result;
-          cImgPreview.innerHTML = '';
-          cImgPreview.appendChild(h('img', { src: cImageData, style: 'max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border)' }));
-        };
-        reader.readAsDataURL(file);
+        cImageData = await compressImage(file, getImageMaxWidth());
+        cImgPreview.innerHTML = '';
+        cImgPreview.appendChild(h('img', { src: cImageData, style: 'max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border)' }));
       }
     }),
     cImgPreview
