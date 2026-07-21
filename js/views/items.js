@@ -243,6 +243,14 @@ export async function renderItemDetail(container, itemId) {
     ]));
   }
 
+  if (item.notes) {
+    wrapper.appendChild(sectionBlock('备注', [
+      h('div', { className: 'detail-row', style: 'flex-direction:column;align-items:flex-start;gap:4px' }, [
+        h('span', { style: 'color:var(--text-secondary);font-size:14px' }, item.notes)
+      ])
+    ]));
+  }
+
   const infoRows = [];
   infoRows.push(rowItem('📅 添加日期', formatDate(item.addedDate)));
 
@@ -290,14 +298,6 @@ export async function renderItemDetail(container, itemId) {
     ]));
   }
 
-  if (item.notes) {
-    wrapper.appendChild(sectionBlock('备注', [
-      h('div', { className: 'detail-row', style: 'flex-direction:column;align-items:flex-start;gap:4px' }, [
-        h('span', { style: 'color:var(--text-secondary);font-size:14px' }, item.notes)
-      ])
-    ]));
-  }
-
   container.appendChild(wrapper);
 
   const actionBtn = $('#header .action');
@@ -328,6 +328,7 @@ export async function renderItemEdit(container, itemId, presetContainerId, prese
 
   const form = h('div', { className: 'form' });
   form.appendChild(formGroup('物品名称', h('input', { type: 'text', id: 'edit-name', value: item?.name || '', placeholder: '输入物品名称' })));
+  form.appendChild(formGroup('备注', h('textarea', { id: 'edit-notes' }, item?.notes || '')));
 
   let imageData = item?.image || '';
   const imgPreview = h('div', { id: 'edit-img-preview', style: 'margin-top:8px;text-align:center' });
@@ -537,8 +538,6 @@ export async function renderItemEdit(container, itemId, presetContainerId, prese
       }, 'container');
     } }, '📷')
   ])));
-
-  form.appendChild(formGroup('备注', h('textarea', { id: 'edit-notes' }, item?.notes || '')));
 
   container.appendChild(form);
 
