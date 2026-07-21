@@ -338,7 +338,6 @@ export async function renderItemDetail(container, itemId) {
     let active = false, horiz = false, locked = false;
 
     const onStart = function(e) {
-      if (e.target.closest('button, a, input, select, textarea, .detail-row')) return;
       var t = e.touches[0];
       sx = t.clientX; sy = t.clientY; dx = 0;
       active = true; horiz = false; locked = false;
