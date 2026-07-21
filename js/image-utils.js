@@ -8,7 +8,7 @@ const STORAGE_KEY = 'wuju_imageMaxWidth';
  */
 export function getImageMaxWidth() {
   const val = localStorage.getItem(STORAGE_KEY);
-  return val ? parseInt(val, 10) : 0;
+  return val ? parseInt(val, 10) : 640;
 }
 
 /**
