@@ -137,7 +137,7 @@ export async function render() {
       case 'item-edit': await renderers.renderItemEdit?.(content, state.params.itemId || null, state.params.presetContainerId || null, state.params.presetQrCode || null); break;
       case 'container-detail': await renderers.renderContainerDetail?.(content, state.params.containerId); break;
       case 'container-edit': await renderers.renderContainerEdit?.(content, state.params.containerId || null, state.params.parentId || null); break;
-      case 'relation-edit': await renderers.renderRelationEdit?.(content, state.params.itemId); break;
+
     }
   }
 
@@ -145,7 +145,7 @@ export async function render() {
   else if (state.screen === 'item-edit') titleEl.textContent = state.params.itemId ? '编辑物品' : '添加物品';
   else if (state.screen === 'container-detail') titleEl.textContent = '位置详情';
   else if (state.screen === 'container-edit') titleEl.textContent = state.params.containerId ? '编辑位置' : '新建位置';
-  else if (state.screen === 'relation-edit') titleEl.textContent = '关联物品';
+
 }
 
 // ── 屏幕左边缘右滑返回 ──
@@ -163,7 +163,6 @@ function _cacheBackdrop() {
   else if (state.screen === 'item-edit') title = state.params.itemId ? '编辑物品' : '添加物品';
   else if (state.screen === 'container-detail') title = '位置详情';
   else if (state.screen === 'container-edit') title = state.params.containerId ? '编辑位置' : '新建位置';
-  else if (state.screen === 'relation-edit') title = '关联物品';
   _backdropStack.push({ title: title, body: content.innerHTML });
 }
 

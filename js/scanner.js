@@ -349,8 +349,6 @@ export function startAssociationScan(itemId, onDone) {
       id: uuid(),
       sourceId: itemId,
       targetId: targetItemId,
-      relationType: '搭配',
-      notes: '扫码关联',
       createdAt: Date.now()
     });
     onDone?.();

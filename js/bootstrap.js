@@ -1,6 +1,6 @@
 import { render, setRenderers, switchTab, goBack, navigate, initSwipeBack, initSwipeDelete, setSwipeDeleteHandler, setSwipeMoveHandler } from './core/app-shell.js';
 import { loadCategories, loadTags, showDeleteDialog, showMoveToContainer } from './ui.js';
-import { renderItemList, renderItemDetail, renderItemEdit, renderRelationEdit } from './views/items.js';
+import { renderItemList, renderItemDetail, renderItemEdit } from './views/items.js';
 import { renderContainerTree, renderContainerDetail, renderContainerEdit } from './views/containers.js';
 import { renderAlertView } from './views/alerts.js';
 import { startUniversalScan } from './scanner.js';
@@ -37,7 +37,6 @@ export async function init() {
       renderItemList,
       renderItemDetail,
       renderItemEdit,
-      renderRelationEdit,
       renderContainerTree,
       renderContainerDetail,
       renderContainerEdit,

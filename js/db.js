@@ -71,6 +71,19 @@ db.version(6).stores({
   tags: 'id, name, sortOrder'
 });
 
+db.version(7).stores({
+  containers: 'id, name, parentId, sortOrder, qrCode',
+  items: 'id, name, category, containerId, expiryDate, addedDate, quantity, qrCode',
+  relations: 'id, sourceId, targetId',
+  categories: 'id, name, sortOrder',
+  tags: 'id, name, sortOrder'
+}).upgrade(tx => {
+  return tx.table('relations').toCollection().modify(rel => {
+    delete rel.relationType;
+    delete rel.notes;
+  });
+});
+
 // ── Category helpers ──
 const DEFAULT_CATEGORIES = [
   { name: '食品', icon: '🍎' },

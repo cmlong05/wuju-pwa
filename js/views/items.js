@@ -283,21 +283,21 @@ export async function renderItemDetail(container, itemId) {
   if (related.length > 0) {
     const relRows = related.map(({ relation, item: ri }) =>
       h('div', { className: 'detail-row', onclick: () => navigate('item-detail', { itemId: ri.id }), style: 'cursor:pointer' }, [
-        h('span', { className: 'relation-chip' }, relation.relationType),
-        h('span', { className: 'value', style: 'text-align:left' }, ri.name),
-        h('span', { className: 'chevron' }, '›')
+        h('span', { className: 'value', style: 'flex:1;text-align:left' }, ri.name),
+        h('span', { className: 'chevron' }, '›'),
+        h('span', { onclick: (e) => { e.stopPropagation(); db.relations.delete(relation.id).then(() => render()); }, style: 'color:var(--red);cursor:pointer;font-size:16px;margin-left:4px' }, '✕')
       ])
     );
     relRows.push(h('div', { className: 'detail-row', style: 'justify-content:center;gap:16px' }, [
-      h('span', { onclick: () => navigate('relation-edit', { itemId }), style: 'cursor:pointer;color:var(--tint)' }, '🔗 管理关联'),
-      h('span', { onclick: () => startAssociationScan(itemId, () => navigate('item-detail', { itemId })), style: 'cursor:pointer;color:var(--green)' }, '📷 扫描关联')
+      h('span', { onclick: () => startAssociationScan(itemId, () => navigate('item-detail', { itemId })), style: 'cursor:pointer;color:var(--green)' }, '📷 扫描关联'),
+      h('span', { onclick: () => showAddRelationPicker(itemId, () => render()), style: 'cursor:pointer;color:var(--tint)' }, '➕ 添加关联')
     ]));
     wrapper.appendChild(sectionBlock('关联物品', relRows));
   } else {
     wrapper.appendChild(sectionBlock('关联物品', [
       h('div', { className: 'detail-row', style: 'justify-content:center;gap:16px' }, [
-        h('span', { onclick: () => navigate('relation-edit', { itemId }), style: 'cursor:pointer;color:var(--tint)' }, '🔗 添加关联'),
-        h('span', { onclick: () => startAssociationScan(itemId, () => navigate('item-detail', { itemId })), style: 'cursor:pointer;color:var(--green)' }, '📷 扫描关联')
+        h('span', { onclick: () => startAssociationScan(itemId, () => navigate('item-detail', { itemId })), style: 'cursor:pointer;color:var(--green)' }, '📷 扫描关联'),
+        h('span', { onclick: () => showAddRelationPicker(itemId, () => render()), style: 'cursor:pointer;color:var(--tint)' }, '➕ 添加关联')
       ])
     ]));
   }
@@ -601,79 +601,49 @@ export async function renderItemEdit(container, itemId, presetContainerId, prese
   actionBtn.appendChild(saveIcon2);
 }
 
-// 渲染关联管理页，支持查看、删除和新增物品关联。
-export async function renderRelationEdit(container, itemId) {
-  const item = await db.items.get(itemId);
-  if (!item) { container.textContent = '物品不存在'; return; }
-
-  const wrapper = h('div', {});
-
+// 简化版添加关联弹窗——直接列出所有物品，点选即可建立双向链接，无需类型和说明。
+async function showAddRelationPicker(itemId, onDone) {
   const related = await getItemRelations(itemId);
-  if (related.length > 0) {
-    const rows = related.map(({ relation, item: ri }) =>
-      h('div', { className: 'detail-row', style: 'justify-content:flex-start;gap:8px' }, [
-        h('span', { className: 'relation-chip' }, relation.relationType),
-        h('span', { style: 'flex:1' }, ri.name),
-        (function() {
-          var b = h('button', {
-            style: 'background:none;border:none;color:var(--red);cursor:pointer;font-size:16px',
-            onclick: async () => {
-              await db.relations.delete(relation.id);
-              render();
-            }
-          });
-          b.innerHTML = '<svg width="1rem" height="1rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16,7V4a1,1,0,0,0-1-1H9A1,1,0,0,0,8,4V7m4,4v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/><path d="M4,7H20M17.07,20.07,18,7H6l.93,13.07a1,1,0,0,0,1,.93h8.14A1,1,0,0,0,17.07,20.07Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-          return b;
-        }())
-      ])
-    );
-    wrapper.appendChild(sectionBlock('已有关联', rows));
-  } else {
-    wrapper.appendChild(sectionBlock('已有关联', [
-      h('div', { className: 'detail-row', style: 'color:var(--text-secondary)' }, '暂无关联')
-    ]));
-  }
-
+  const relatedIds = new Set(related.map(r => r.item.id));
+  relatedIds.add(itemId);
   const allItems = await db.items.toArray();
-  const available = allItems.filter(i => i.id !== itemId);
+  const available = allItems.filter(i => !relatedIds.has(i.id));
 
-  if (available.length > 0) {
-    const addSection = h('div', { className: 'detail-section', style: 'margin-top:16px' });
-    addSection.appendChild(h('div', { className: 'section-title' }, '添加关联'));
+  const overlay = h('div', { className: 'overlay', style: 'z-index:999' });
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
 
-    const targetSelect = h('select', { id: 'rel-target', style: 'width:100%;padding:12px;border:1px solid var(--separator);border-radius:8px;font-size:15px;margin-bottom:8px' });
-    targetSelect.appendChild(h('option', { value: '' }, '选择物品...'));
-    available.forEach(i => targetSelect.appendChild(h('option', { value: i.id }, i.name)));
+  const dialog = h('div', { className: 'dialog', style: 'max-height:70vh;display:flex;flex-direction:column' });
+  dialog.appendChild(h('div', { className: 'msg', style: 'text-align:center' }, [
+    h('div', { style: 'font-weight:600;margin-bottom:4px' }, '添加关联物品'),
+    h('div', { style: 'font-size:12px;color:var(--text-secondary)' }, '点击物品建立关联')
+  ]));
 
-    const typeSelect = h('select', { id: 'rel-type', style: 'width:100%;padding:12px;border:1px solid var(--separator);border-radius:8px;font-size:15px;margin-bottom:8px' });
-    ['属于', '搭配', '替换', '备用'].forEach(t => typeSelect.appendChild(h('option', { value: t }, t)));
-
-    const notesInput = h('input', { type: 'text', id: 'rel-notes', placeholder: '关联说明（可选）', style: 'width:100%;padding:12px;border:1px solid var(--separator);border-radius:8px;font-size:15px' });
-
-    const addBtn = h('button', {
-      className: 'btn btn-primary',
-      style: 'width:100%;margin-top:12px',
-      onclick: async () => {
-        const targetId = $('#rel-target').value;
-        if (!targetId) return;
-        await db.relations.put({
-          id: uuid(),
-          sourceId: itemId,
-          targetId,
-          relationType: $('#rel-type').value,
-          notes: $('#rel-notes').value,
-          createdAt: Date.now()
-        });
-        render();
-      }
-    }, '添加关联');
-
-    addSection.appendChild(targetSelect);
-    addSection.appendChild(typeSelect);
-    addSection.appendChild(notesInput);
-    addSection.appendChild(addBtn);
-    wrapper.appendChild(addSection);
+  const list = h('div', { style: 'overflow-y:auto;max-height:50vh;margin:8px 0' });
+  if (available.length === 0) {
+    list.appendChild(h('div', { style: 'text-align:center;padding:12px;color:var(--text-secondary);font-size:14px' }, '没有可关联的物品'));
+  } else {
+    available.forEach(i => {
+      const row = h('div', {
+        className: 'detail-row',
+        style: 'cursor:pointer',
+        onclick: async () => {
+          await db.relations.put({ id: uuid(), sourceId: itemId, targetId: i.id, createdAt: Date.now() });
+          overlay.remove();
+          onDone?.();
+        }
+      }, [
+        h('span', { style: 'flex:1;text-align:left' }, i.name),
+        h('span', { style: 'color:var(--text-tertiary);font-size:12px' }, i.category || '')
+      ]);
+      list.appendChild(row);
+    });
   }
+  dialog.appendChild(list);
 
-  container.appendChild(wrapper);
+  const btns = h('div', { className: 'btns' });
+  btns.appendChild(h('button', { onclick: () => overlay.remove() }, '取消'));
+  dialog.appendChild(btns);
+
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
 }

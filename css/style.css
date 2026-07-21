@@ -507,12 +507,6 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
 .dialog .btns { display: flex; gap: 8px; }
 .dialog .btns button { flex: 1; padding: 12px; border-radius: var(--radius-sm); font-size: 15px; cursor: pointer; border: none; }
 
-/* ── 关联页 ── */
-.relation-chip {
-  font-size: 11px; padding: 2px 8px; background: rgba(91, 143, 249, 0.1);
-  border-radius: 10px; color: var(--tint); font-weight: 500; flex-shrink: 0;
-}
-
 /* ── 通用动画 ── */
 @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .slide-in { animation: slideIn 0.2s ease-out; }
