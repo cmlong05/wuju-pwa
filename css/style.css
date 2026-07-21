@@ -381,7 +381,7 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   background: var(--card-bg); gap: 10px;
 }
 .detail-row.rounded { border-radius: var(--radius); box-shadow: var(--shadow); }
-.detail-row .label { color: var(--text-secondary); flex-shrink: 0; }
+.detail-row .label { color: var(--text-secondary); min-width:0; overflow-wrap: anywhere; }
 .detail-row .value { flex: 1; text-align: right; color: var(--text); }
 .detail-row .value.expired { color: var(--red); font-weight: 600; }
 .detail-row .value.warning { color: var(--orange); }
