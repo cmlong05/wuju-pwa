@@ -380,9 +380,9 @@ export async function renderItemDetail(container, itemId) {
       }
     };
 
-    wrapper.addEventListener('touchstart', onStart, { passive: true });
-    wrapper.addEventListener('touchmove', onMove, { passive: true });
-    wrapper.addEventListener('touchend', onEnd);
+    container.addEventListener('touchstart', onStart, { passive: true });
+    container.addEventListener('touchmove', onMove, { passive: true });
+    container.addEventListener('touchend', onEnd);
   }
 }
 
