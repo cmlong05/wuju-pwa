@@ -6,6 +6,7 @@ import { startContainerParentScan, startContainerItemScan, showScanner, parseWuj
 import { compressImage, getImageMaxWidth } from '../image-utils.js';
 
 const CONTAINER_ICONS = ['🏠','🍽️','❄️','🗄️','👕','📚','🔨','💊','📁','📦','🧳','🧊'];
+let _containerSwipeCleanup = null;
 const CONTAINER_COLORS = [
   { label: '蓝', hex: '#5B8FF9' }, { label: '绿', hex: '#5AD8A6' },
   { label: '橙', hex: '#F6BD16' }, { label: '红', hex: '#E8684A' },
@@ -207,6 +208,74 @@ export async function renderContainerDetail(container, containerId) {
   }), style: 'color:var(--red);display:inline-flex;align-items:center;cursor:pointer' });
   delIcon1.innerHTML = '<svg width="1.6rem" height="1.6rem" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16,7V4a1,1,0,0,0-1-1H9A1,1,0,0,0,8,4V7m4,4v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/><path d="M4,7H20M17.07,20.07,18,7H6l.93,13.07a1,1,0,0,0,1,.93h8.14A1,1,0,0,0,17.07,20.07Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   actionBtn.appendChild(delIcon1);
+
+  // ── 左右滑动切换同级容器 ──
+  let siblings;
+  if (c.parentId) {
+    siblings = await db.containers.where('parentId').equals(c.parentId).toArray();
+  } else {
+    siblings = await db.containers.where('parentId').equals('').toArray();
+  }
+  siblings.sort((a, b) => a.sortOrder - b.sortOrder);
+  const list = siblings.map(s => s.id);
+  const curIdx = list.indexOf(containerId);
+  const hasPrev = curIdx > 0;
+  const hasNext = curIdx >= 0 && curIdx < list.length - 1;
+
+  if (hasPrev || hasNext) {
+    if (_containerSwipeCleanup) { _containerSwipeCleanup(); _containerSwipeCleanup = null; }
+
+    let sx = 0, sy = 0, dx = 0;
+    let active = false, horiz = false, locked = false;
+
+    const onStart = function(e) {
+      var t = e.touches[0];
+      sx = t.clientX; sy = t.clientY; dx = 0;
+      active = true; horiz = false; locked = false;
+      wrapper.style.transition = 'none';
+      wrapper.style.opacity = '1';
+    };
+
+    const onMove = function(e) {
+      if (!active) return;
+      var t = e.touches[0];
+      var ndx = t.clientX - sx;
+      var ndy = t.clientY - sy;
+      if (!locked) {
+        if (Math.abs(ndx) > 8 || Math.abs(ndy) > 8) {
+          locked = true;
+          horiz = Math.abs(ndx) > Math.abs(ndy);
+        } else { return; }
+      }
+      if (!horiz) return;
+      dx = Math.max(-140, Math.min(140, ndx));
+      wrapper.style.transform = 'translateX(' + dx + 'px)';
+      wrapper.style.opacity = Math.max(0.3, 1 - Math.abs(dx) / 200);
+    };
+
+    const onEnd = function() {
+      if (!active) return;
+      active = false;
+      wrapper.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
+      wrapper.style.transform = 'translateX(0)';
+      wrapper.style.opacity = '1';
+      if (dx < -70 && hasNext) {
+        navigate('container-detail', { containerId: list[curIdx + 1] });
+      } else if (dx > 70 && hasPrev) {
+        navigate('container-detail', { containerId: list[curIdx - 1] });
+      }
+    };
+
+    container.addEventListener('touchstart', onStart, { passive: true });
+    container.addEventListener('touchmove', onMove, { passive: true });
+    container.addEventListener('touchend', onEnd);
+
+    _containerSwipeCleanup = function() {
+      container.removeEventListener('touchstart', onStart, { passive: true });
+      container.removeEventListener('touchmove', onMove, { passive: true });
+      container.removeEventListener('touchend', onEnd);
+    };
+  }
 }
 
 // 渲染容器编辑页，支持图标、颜色、父容器和备注。
