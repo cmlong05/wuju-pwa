@@ -559,6 +559,13 @@ export async function renderItemEdit(container, itemId, presetContainerId, prese
     form.appendChild(g);
   })();
 
+  // QR 码/条码：手动输入 + 扫码关联
+  const qrInput = h('input', { type: 'text', id: 'edit-qrcode', value: item?.qrCode || '', placeholder: '输入或扫码添加条码/二维码' });
+  form.appendChild(formGroup('条码/二维码', h('div', { style: 'display:flex;align-items:center;gap:4px' }, [
+    qrInput,
+    h('button', { type: 'button', style: 'padding:6px 2px;border:none;background:transparent;font-size:18px;cursor:pointer;color:var(--text-secondary)', onclick: function() { showScanner(function(text) { qrInput.value = text; }); } }, '📷')
+  ])));
+
   container.appendChild(form);
 
   const actionBtn = $('#header .action');
@@ -576,7 +583,8 @@ export async function renderItemEdit(container, itemId, presetContainerId, prese
       tags: [...document.querySelectorAll('#edit-tags .chip.selected')].map(b => b.textContent.replace(/^[^\s]*\s/, '')),
       expiryDate: document.getElementById('edit-has-expiry').classList.contains('on') ? new Date($('#edit-expiry').value).getTime() : null,
       containerId: (function() { const sels = [...document.querySelectorAll('#edit-container-cascade .cascade-select')]; return sels.length > 0 ? sels[sels.length - 1].value : ''; })(),
-      notes: $('#edit-notes').value
+      notes: $('#edit-notes').value,
+      qrCode: $('#edit-qrcode').value.trim() || presetQrCode || undefined
     };
 
     if (isEdit) {
@@ -587,7 +595,6 @@ export async function renderItemEdit(container, itemId, presetContainerId, prese
       await db.items.put({
         id: newId,
         ...data,
-        qrCode: presetQrCode || undefined,
         addedDate: Date.now()
       });
       // 新建完成 → 替换栈顶为新物品详情，返回时仍回到来源页（首页/容器详情）
