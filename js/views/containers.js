@@ -225,6 +225,26 @@ export async function renderContainerEdit(container, containerId, presetParentId
     cImgPreview
   ])));
 
+  // 可折叠分组辅助函数
+  function foldGroup(label, child) {
+    const g = h('div', { className: 'form-group fold-group' });
+    const head = h('div', { className: 'fold-header', onclick: function() {
+      const body = this.nextElementSibling;
+      const arrow = this.querySelector('.fold-arrow');
+      const hidden = body.style.display === 'none';
+      body.style.display = hidden ? '' : 'none';
+      arrow.style.transform = hidden ? 'rotate(90deg)' : '';
+    }}, [
+      h('label', { style: 'margin-bottom:0' }, label),
+      h('span', { className: 'fold-arrow' }, '›')
+    ]);
+    const body = h('div', { className: 'fold-body', style: 'display:none;padding-top:6px' });
+    body.appendChild(child);
+    g.appendChild(head);
+    g.appendChild(body);
+    return g;
+  }
+
   const iconGrid = h('div', { className: 'icon-grid' });
   CONTAINER_ICONS.forEach(icon => {
     iconGrid.appendChild(h('button', {
@@ -235,7 +255,7 @@ export async function renderContainerEdit(container, containerId, presetParentId
       }
     }, icon));
   });
-  form.appendChild(formGroup('图标', iconGrid));
+  form.appendChild(foldGroup('图标', iconGrid));
 
   const colorGrid = h('div', { className: 'color-grid' });
   CONTAINER_COLORS.forEach(({ label, hex }) => {
@@ -251,7 +271,7 @@ export async function renderContainerEdit(container, containerId, presetParentId
       h('span', { className: 'label' }, label)
     ]));
   });
-  form.appendChild(formGroup('颜色标签', colorGrid));
+  form.appendChild(foldGroup('颜色标签', colorGrid));
 
   // 构建容器查找表和禁用集合
   const allContainers = await db.containers.toArray();

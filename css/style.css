@@ -403,6 +403,16 @@ input, textarea, select { user-select: text; -webkit-user-select: text; }
   outline: none; border-color: var(--tint);
 }
 
+/* 可折叠分组 */
+.fold-header {
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; user-select: none;
+}
+.fold-arrow {
+  font-size: 18px; color: var(--text-secondary);
+  transition: transform 0.2s; display: inline-block;
+}
+
 .toggle-row {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 0;
