@@ -145,7 +145,7 @@ export async function renderContainerDetail(container, containerId) {
   // 物品列表
   if (items.length > 0) {
     items.forEach(item => {
-      itemRows.push(h('div', { className: 'detail-row', onclick: () => navigate('item-detail', { itemId: item.id }), style: 'cursor:pointer;flex-wrap:wrap;gap:4px' }, [
+      itemRows.push(h('div', { className: 'detail-row', onclick: () => { state.itemDetailList = items.map(function(i) { return i.id; }); navigate('item-detail', { itemId: item.id }); }, style: 'cursor:pointer;flex-wrap:wrap;gap:4px' }, [
         h('span', { style: 'margin-right:8px' }, '📦'),
         h('span', { style: 'flex:1;font-weight:500' }, item.name),
         (item.tags && item.tags.length > 0)

@@ -12,6 +12,7 @@ export const state = {
   tagFilter: '',
   expandedContainers: new Set(),
   itemListOrder: [],
+  itemDetailList: [],
 };
 
 let renderers = {};

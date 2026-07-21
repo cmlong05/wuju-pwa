@@ -1,4 +1,4 @@
-import { render, setRenderers, switchTab, goBack, navigate, initSwipeBack, initSwipeDelete, setSwipeDeleteHandler, setSwipeMoveHandler } from './core/app-shell.js';
+import { render, setRenderers, switchTab, goBack, navigate, state, initSwipeBack, initSwipeDelete, setSwipeDeleteHandler, setSwipeMoveHandler } from './core/app-shell.js';
 import { loadCategories, loadTags, showDeleteDialog, showMoveToContainer } from './ui.js';
 import { renderItemList, renderItemDetail, renderItemEdit } from './views/items.js';
 import { renderContainerTree, renderContainerDetail, renderContainerEdit } from './views/containers.js';
@@ -43,7 +43,7 @@ export async function init() {
       renderAlertView,
       renderScanTab: () => startUniversalScan(async result => {
         if (result.kind === 'item') {
-          navigate('item-detail', { itemId: result.itemId });
+          state.itemDetailList = []; navigate('item-detail', { itemId: result.itemId });
         } else if (result.kind === 'container') {
           navigate('container-detail', { containerId: result.containerId });
         } else if (result.kind === 'new-item') {

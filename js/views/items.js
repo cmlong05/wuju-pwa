@@ -47,7 +47,7 @@ async function renderItemRows() {
       'data-has-move': '1'
     }, [
       delBg, moveBg,
-      h('div', { className: 'card-row item-row swipe-row', onclick: function(e) { navigate('item-detail', { itemId: item.id }); } }, [
+      h('div', { className: 'card-row item-row swipe-row', onclick: function(e) { state.itemDetailList = items.map(function(i) { return i.id; }); navigate('item-detail', { itemId: item.id }); } }, [
         h('span', { className: 'cat-icon' }, catIcons[item.category] || '📦'),
         h('div', { className: 'info' }, [
           h('div', { className: 'name' }, item.name),
@@ -329,7 +329,7 @@ export async function renderItemDetail(container, itemId) {
   actionBtn.appendChild(delIcon2);
 
   // ── 左右滑动切换物品 ──
-  const list = state.itemListOrder || [];
+  const list = (state.itemDetailList && state.itemDetailList.length > 0) ? state.itemDetailList : (state.itemListOrder || []);
   const curIdx = list.indexOf(itemId);
   const hasPrev = curIdx > 0;
   const hasNext = curIdx >= 0 && curIdx < list.length - 1;

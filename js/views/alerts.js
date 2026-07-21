@@ -1,5 +1,5 @@
 import { h } from '../core/dom.js';
-import { navigate } from '../core/app-shell.js';
+import { navigate, state } from '../core/app-shell.js';
 import { getExpiredItems, getExpiringSoonItems, getLowStockItems } from '../db.js';
 
 // 渲染提醒页，把过期、临期和低库存物品分组展示。
@@ -49,7 +49,7 @@ function renderAlertSection(title, color, items, getItemMeta) {
   const group = h('div', { className: 'card-row-group' });
   items.forEach(item => {
     const meta = getItemMeta(item);
-    group.appendChild(h('div', { className: 'card-row', onclick: () => navigate('item-detail', { itemId: item.id }) }, [
+    group.appendChild(h('div', { className: 'card-row', onclick: () => { state.itemDetailList = []; navigate('item-detail', { itemId: item.id }); } }, [
       h('span', { style: 'color:' + color + ';margin-right:8px' }, meta.icon),
       h('span', { style: 'flex:1;font-weight:500' }, item.name),
       h('span', { style: 'font-size:13px;color:' + meta.labelColor }, meta.label),
