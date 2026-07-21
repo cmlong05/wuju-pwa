@@ -280,8 +280,8 @@ export function stopScanner() {
   _torchOn = false;
 }
 
-// 弹出无法识别的条码对话框，提供添加物品的入口。
-function showUnrecognizedDialog(text, onAdd) {
+// 弹出无法识别的条码对话框，提供添加物品和添加位置的入口。
+function showUnrecognizedDialog(text, onAddItem, onAddLocation) {
   var overlay = h('div', { className: 'overlay', onclick: function(e) { if (e.target === overlay) overlay.remove(); } }, [
     h('div', { className: 'dialog' }, [
       h('div', { className: 'msg' }, [
@@ -290,7 +290,8 @@ function showUnrecognizedDialog(text, onAdd) {
       ]),
       h('div', { className: 'btns' }, [
         h('button', { style: 'background:#E5E5EA;color:var(--text)', onclick: function() { overlay.remove(); } }, '取消'),
-        h('button', { style: 'background:var(--tint);color:#fff', onclick: function() { overlay.remove(); onAdd(); } }, '添加物品')
+        h('button', { style: 'background:var(--tint);color:#fff', onclick: function() { overlay.remove(); onAddItem(); } }, '添加物品'),
+        h('button', { style: 'background:var(--green);color:#fff', onclick: function() { overlay.remove(); onAddLocation(); } }, '添加位置')
       ])
     ])
   ]);
@@ -318,6 +319,8 @@ export async function startUniversalScan(onResolved) {
 
     showUnrecognizedDialog(text, function() {
       onResolved?.({ kind: 'new-item', scannedText: text });
+    }, function() {
+      onResolved?.({ kind: 'new-container', scannedText: text });
     });
   }, 'auto');
 }
