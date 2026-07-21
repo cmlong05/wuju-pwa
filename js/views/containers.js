@@ -433,12 +433,19 @@ export async function renderContainerEdit(container, containerId, presetParentId
 
   form.appendChild(formGroup('备注', h('textarea', { id: 'cedit-notes' }, c?.notes || '')));
 
-  // QR 码/条码：手动输入 + 扫码关联
-  const qrInput = h('input', { type: 'text', id: 'cedit-qrcode', value: c?.qrCode || presetQrCode || '', placeholder: '输入或扫码添加条码/二维码' });
-  form.appendChild(formGroup('条码/二维码', h('div', { style: 'display:flex;align-items:center;gap:4px' }, [
-    qrInput,
-    h('button', { type: 'button', style: 'padding:6px 2px;border:none;background:transparent;font-size:18px;cursor:pointer;color:var(--text-secondary)', onclick: function() { showScanner(function(text) { qrInput.value = text; }); } }, '📷')
-  ])));
+  // QR 码/条码：手动输入 + 扫码关联（扫入的条码灰色只读）
+  const hasPresetQr = !!presetQrCode;
+  const qrInput = h('input', { type: 'text', id: 'cedit-qrcode',
+    value: c?.qrCode || presetQrCode || '',
+    placeholder: '输入或扫码添加条码/二维码',
+    readonly: hasPresetQr ? 'readonly' : undefined,
+    style: hasPresetQr ? 'background:#E5E5EA;color:#8E8E93' : ''
+  });
+  const qrRow = h('div', { style: 'display:flex;align-items:center;gap:4px' }, [qrInput]);
+  if (!hasPresetQr) {
+    qrRow.appendChild(h('button', { type: 'button', style: 'padding:6px 2px;border:none;background:transparent;font-size:18px;cursor:pointer;color:var(--text-secondary)', onclick: function() { showScanner(function(text) { qrInput.value = text; }); } }, '📷'));
+  }
+  form.appendChild(formGroup('条码/二维码', qrRow));
 
   container.appendChild(form);
 
