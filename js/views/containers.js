@@ -164,10 +164,10 @@ export async function renderContainerDetail(container, containerId) {
   plusIcon.innerHTML = '<svg width="1.1rem" height="1.1rem" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path d="M512 1024C229.7 1024 0 794.3 0 512S229.7 0 512 0s512 229.7 512 512-229.7 512-512 512z m0-938.7C276.7 85.3 85.3 276.7 85.3 512S276.7 938.7 512 938.7 938.7 747.3 938.7 512 747.3 85.3 512 85.3z" fill="#3688FF"/><path d="M682.7 554.7H341.3c-23.6 0-42.7-19.1-42.7-42.7s19.1-42.7 42.7-42.7h341.3c23.6 0 42.7 19.1 42.7 42.7s-19.1 42.7-42.6 42.7z" fill="#5F6379"/><path d="M512 725.3c-23.6 0-42.7-19.1-42.7-42.7V341.3c0-23.6 19.1-42.7 42.7-42.7s42.7 19.1 42.7 42.7v341.3c0 23.6-19.1 42.7-42.7 42.7z" fill="#5F6379"/></svg>';
   itemRows.push(
     h('div', { className: 'detail-row', style: 'justify-content:center;gap:12px;padding:6px 0' }, [
-      h('button', { type: 'button', style: 'display:inline-flex;align-items:center;gap:2px;border:none;background:transparent;color:var(--green);font-size:14px;cursor:pointer;padding:4px 10px',
+      h('button', { type: 'button', style: 'display:inline-flex;align-items:center;gap:2px;border:none;background:transparent;color:var(--green);cursor:pointer;padding:4px 10px',
         onclick: () => navigate('item-edit', { presetContainerId: containerId })
       }, [plusIcon.cloneNode(true), '手动添加']),
-      h('button', { type: 'button', style: 'display:inline-flex;align-items:center;gap:2px;border:none;background:transparent;color:var(--green);font-size:14px;cursor:pointer;padding:4px 10px',
+      h('button', { type: 'button', style: 'display:inline-flex;align-items:center;gap:2px;border:none;background:transparent;color:var(--green);cursor:pointer;padding:4px 10px',
         onclick: () => showScanner(function(text) { navigate('item-edit', { presetContainerId: containerId, presetQrCode: text }); })
       }, ['📷', '扫描添加'])
     ])
@@ -176,10 +176,10 @@ export async function renderContainerDetail(container, containerId) {
   // 关联已有物品：手动 / 扫描
   itemRows.push(
     h('div', { className: 'detail-row', style: 'justify-content:center;gap:12px;padding:6px 0' }, [
-      h('button', { type: 'button', style: 'display:inline-flex;align-items:center;gap:2px;border:none;background:transparent;color:var(--green);font-size:14px;cursor:pointer;padding:4px 10px',
+      h('button', { type: 'button', style: 'display:inline-flex;align-items:center;gap:2px;border:none;background:transparent;color:var(--green);cursor:pointer;padding:4px 10px',
         onclick: () => showAssociateItemPicker(containerId, () => navigate('container-detail', { containerId }))
       }, ['📋', '手动关联']),
-      h('button', { type: 'button', style: 'display:inline-flex;align-items:center;gap:2px;border:none;background:transparent;color:var(--green);font-size:14px;cursor:pointer;padding:4px 10px',
+      h('button', { type: 'button', style: 'display:inline-flex;align-items:center;gap:2px;border:none;background:transparent;color:var(--green);cursor:pointer;padding:4px 10px',
         onclick: () => startContainerItemScan(containerId, () => navigate('container-detail', { containerId }))
       }, ['📷', '扫描关联'])
     ])
