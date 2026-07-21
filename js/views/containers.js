@@ -1,6 +1,6 @@
 import { $, h } from '../core/dom.js';
 import { state, navigate, replaceNavigate, switchTab, goBack, render } from '../core/app-shell.js';
-import { db, getRootContainers, getContainerTotalItems, getEligibleParentContainers, deleteContainerCascade, getContainerPath, uuid } from '../db.js';
+import { db, getRootContainers, getContainerTotalItems, getEligibleParentContainers, deleteContainerCascade, getContainerPath, uuid, getAllDescendantIds } from '../db.js';
 import { showQRModal, showDeleteDialog, sectionBlock, rowLink, tagIcons, formGroup } from '../ui.js';
 import { startContainerParentScan, startContainerItemScan, showScanner, parseWujuCode } from '../scanner.js';
 
@@ -253,18 +253,129 @@ export async function renderContainerEdit(container, containerId, presetParentId
   });
   form.appendChild(formGroup('颜色标签', colorGrid));
 
-  const candidates = await getEligibleParentContainers(containerId);
-  const parentSelect = h('select', { id: 'cedit-parent' });
-  parentSelect.appendChild(h('option', { value: '', selected: (!isEdit && !presetParentId) || c?.parentId === '' ? 'selected' : undefined }, '顶层（无父位置）'));
-  for (const root of candidates) {
-    parentSelect.appendChild(h('option', {
-      value: root.id,
-      selected: c?.parentId === root.id || (!isEdit && presetParentId === root.id) ? 'selected' : undefined
-    }, root.icon + ' ' + root.name));
+  // 构建容器查找表和禁用集合
+  const allContainers = await db.containers.toArray();
+  const contMap = {};
+  allContainers.forEach(c => { contMap[c.id] = c; });
+  const forbiddenIds = containerId ? new Set([containerId, ...await getAllDescendantIds(containerId)]) : new Set();
+  const roots = allContainers.filter(c => c.parentId === '' && !forbiddenIds.has(c.id)).sort((a, b) => a.sortOrder - b.sortOrder);
+
+  // 获取指定容器的子容器（过滤禁用项）
+  function getChildren(pid) {
+    return allContainers.filter(c => c.parentId === pid && !forbiddenIds.has(c.id)).sort((a, b) => a.sortOrder - b.sortOrder);
   }
-  form.appendChild(formGroup('父位置', h('div', { style: 'display:flex;align-items:center;gap:4px' }, [
-    parentSelect,
-    h('button', { type: 'button', style: 'padding:6px 2px;border:none;background:transparent;font-size:18px;cursor:pointer;color:var(--text-secondary)', onclick: function() {
+
+  // 计算祖先路径（从根到父）
+  const ancestorPath = [];
+  if (c?.parentId) {
+    let pid = c.parentId;
+    while (pid && contMap[pid]) {
+      ancestorPath.unshift(contMap[pid]);
+      pid = contMap[pid].parentId;
+    }
+  }
+
+  // 创建逐级选择容器
+  const cascadeDiv = h('div', { id: 'cedit-parent-cascade', style: 'display:flex;flex-direction:column;gap:6px' });
+
+  const selStyle = 'width:100%;padding:12px;border:1px solid var(--separator);border-radius:8px;font-size:15px;background:var(--card-bg);color:var(--text)';
+
+  // 构建一个层级选择器
+  function makeSelect(level, options, selectedValue) {
+    const sel = h('select', { className: 'cascade-select', 'data-level': String(level), style: selStyle });
+    if (level === 0) {
+      sel.appendChild(h('option', { value: '' }, '顶层（无父位置）'));
+    } else {
+      sel.appendChild(h('option', { value: '' }, '—'));
+    }
+    options.forEach(o => {
+      sel.appendChild(h('option', { value: o.id, selected: o.id === selectedValue ? 'selected' : undefined }, o.icon + ' ' + o.name));
+    });
+    return sel;
+  }
+
+  // 重建当前级及之后所有级
+  function rebuildFromLevel(startLevel, startParentId) {
+    var selects = [...cascadeDiv.querySelectorAll('.cascade-select')];
+    // 删除 startLevel 及之后的所有选择器
+    selects.forEach(function(s) {
+      if (parseInt(s.dataset.level) >= startLevel) s.remove();
+    });
+
+    if (startLevel === -1) {
+      // 全部重建：从 L0 开始
+      cascadeDiv.innerHTML = '';
+      var s0 = makeSelect(0, roots, ancestorPath.length > 0 ? ancestorPath[0].id : '');
+      cascadeDiv.appendChild(s0);
+      bindChange(s0);
+      if (s0.value) cascadeFrom(s0);
+      return;
+    }
+
+    // 从当前级开始展开
+    var parentId = startParentId;
+    var level = startLevel;
+    while (parentId) {
+      var children = getChildren(parentId);
+      if (children.length === 0) break;
+      var sel = makeSelect(level, children, '');
+      cascadeDiv.appendChild(sel);
+      bindChange(sel);
+      parentId = sel.value;
+      level++;
+      if (!parentId) break;
+    }
+  }
+
+  // 绑定 change 事件
+  function bindChange(sel) {
+    sel.addEventListener('change', function() {
+      var lvl = parseInt(this.dataset.level);
+      if (this.value) {
+        rebuildFromLevel(lvl + 1, this.value);
+      } else {
+        rebuildFromLevel(lvl + 1, '');
+      }
+    });
+  }
+
+  // 选中某级后向下级联展开
+  function cascadeFrom(sel) {
+    var lvl = parseInt(sel.dataset.level);
+    var children = getChildren(sel.value);
+    if (children.length > 0) {
+      rebuildFromLevel(lvl + 1, sel.value);
+    }
+  }
+
+  // 首次渲染
+  if (ancestorPath.length > 0) {
+    var pid = '';
+    for (var ai = 0; ai < ancestorPath.length; ai++) {
+      var options = ai === 0 ? roots : getChildren(pid);
+      var sel = makeSelect(ai, options, ancestorPath[ai].id);
+      cascadeDiv.appendChild(sel);
+      bindChange(sel);
+      pid = ancestorPath[ai].id;
+    }
+    // 最后一级展开当前父容器的子容器
+    if (c?.parentId) {
+      var lastChildren = getChildren(pid);
+      if (lastChildren.length > 0) {
+        var lastSel = makeSelect(ancestorPath.length, lastChildren, c.parentId);
+        cascadeDiv.appendChild(lastSel);
+        bindChange(lastSel);
+      }
+    }
+  } else {
+    var s0 = makeSelect(0, roots, '');
+    cascadeDiv.appendChild(s0);
+    bindChange(s0);
+  }
+
+  form.appendChild(formGroup('父位置', h('div', { style: 'display:flex;align-items:flex-start;gap:4px' }, [
+    cascadeDiv,
+    h('button', { type: 'button', style: 'padding:6px 2px;border:none;background:transparent;font-size:18px;cursor:pointer;color:var(--text-secondary);flex-shrink:0;margin-top:6px', onclick: async function() {
       showScanner(async function(text) {
         var foundId = '';
         const wuju = parseWujuCode(text);
@@ -274,13 +385,31 @@ export async function renderContainerEdit(container, containerId, presetParentId
           const found = await db.containers.where('qrCode').equals(text).first();
           if (found) foundId = found.id;
         }
-        if (foundId && parentSelect.querySelector('option[value=\"' + foundId + '\"]')) {
-          parentSelect.value = foundId;
-        } else if (foundId) {
-          alert('该位置不能设为父位置（可能是自身或子位置）');
-        } else {
-          alert('未识别到位置条码/二维码');
+        if (!foundId || forbiddenIds.has(foundId)) {
+          alert(forbiddenIds.has(foundId) ? '该位置不能设为父位置（可能是自身或子位置）' : '未识别到位置条码/二维码');
+          return;
         }
+        // 计算祖先路径并重建级联
+        var path = [];
+        var pid2 = contMap[foundId]?.parentId;
+        while (pid2 && contMap[pid2]) {
+          path.unshift(contMap[pid2]);
+          pid2 = contMap[pid2].parentId;
+        }
+        cascadeDiv.innerHTML = '';
+        var cp = '';
+        for (var pi = 0; pi < path.length; pi++) {
+          var opts = pi === 0 ? roots : getChildren(cp);
+          var s = makeSelect(pi, opts, path[pi].id);
+          cascadeDiv.appendChild(s);
+          bindChange(s);
+          cp = path[pi].id;
+        }
+        // 最后一级选中扫描到的容器
+        var finalOpts = path.length === 0 ? roots : getChildren(cp);
+        var fs = makeSelect(path.length, finalOpts, foundId);
+        cascadeDiv.appendChild(fs);
+        bindChange(fs);
       }, 'container');
     } }, '📷')
   ])));
@@ -307,7 +436,8 @@ export async function renderContainerEdit(container, containerId, presetParentId
     const colorEl = container.querySelector('.color-btn.selected');
     const icon = iconEl ? iconEl.textContent : '📁';
     const color = colorEl ? colorEl.dataset.color : '#5B8FF9';
-    const parentId = $('#cedit-parent').value;
+    const cascadeSelects = [...document.querySelectorAll('#cedit-parent-cascade .cascade-select')];
+    const parentId = cascadeSelects.length > 0 ? cascadeSelects[cascadeSelects.length - 1].value : '';
     const notes = $('#cedit-notes').value;
     let qrCode = $('#cedit-qrcode').value.trim();
     let newContainerId = null;
