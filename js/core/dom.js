@@ -12,7 +12,7 @@ export function h(tag, attrs = {}, ...children) {
     else if (k === 'onclick') el.addEventListener('click', v);
     else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
     else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
-    else if (k === 'disabled' || k === 'selected' || k === 'checked') { if (v) el.setAttribute(k, ''); }
+    else if (k === 'disabled' || k === 'selected' || k === 'checked' || k === 'readonly') { if (v) el.setAttribute(k, ''); }
     else el.setAttribute(k, v);
   }
   function append(c) {
