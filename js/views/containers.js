@@ -2,7 +2,7 @@ import { $, h } from '../core/dom.js';
 import { state, navigate, replaceNavigate, switchTab, goBack, render } from '../core/app-shell.js';
 import { db, getRootContainers, getContainerTotalItems, getEligibleParentContainers, deleteContainerCascade, getContainerPath, uuid } from '../db.js';
 import { showQRModal, showDeleteDialog, sectionBlock, rowLink, tagIcons, formGroup } from '../ui.js';
-import { startContainerParentScan, startContainerItemScan } from '../scanner.js';
+import { startContainerParentScan, startContainerItemScan, showScanner } from '../scanner.js';
 
 const CONTAINER_ICONS = ['🏠','🍽️','❄️','🗄️','👕','📚','🔨','💊','📁','📦','🧳','🧊'];
 const CONTAINER_COLORS = [
@@ -266,6 +266,13 @@ export async function renderContainerEdit(container, containerId, presetParentId
 
   form.appendChild(formGroup('备注', h('textarea', { id: 'cedit-notes' }, c?.notes || '')));
 
+  // QR 码/条码：手动输入 + 扫码关联
+  const qrInput = h('input', { type: 'text', id: 'cedit-qrcode', value: c?.qrCode || '', placeholder: '输入或扫码添加条码/二维码' });
+  form.appendChild(formGroup('条码/二维码', h('div', { style: 'display:flex;align-items:center;gap:4px' }, [
+    qrInput,
+    h('button', { type: 'button', style: 'padding:6px 2px;border:none;background:transparent;font-size:18px;cursor:pointer;color:var(--text-secondary)', onclick: function() { showScanner(function(text) { qrInput.value = text; }); } }, '📷')
+  ])));
+
   container.appendChild(form);
 
   const actionBtn = $('#header .action');
@@ -281,16 +288,18 @@ export async function renderContainerEdit(container, containerId, presetParentId
     const color = colorEl ? colorEl.dataset.color : '#5B8FF9';
     const parentId = $('#cedit-parent').value;
     const notes = $('#cedit-notes').value;
+    let qrCode = $('#cedit-qrcode').value.trim();
     let newContainerId = null;
 
     if (isEdit) {
-      await db.containers.update(containerId, { name, icon, color, parentId, notes, image: cImageData });
+      await db.containers.update(containerId, { name, icon, color, parentId, notes, image: cImageData, qrCode: qrCode || undefined });
     } else {
       newContainerId = uuid();
+      if (!qrCode) qrCode = 'wuju:container:' + newContainerId;
       const maxSort = await db.containers.where('parentId').equals(parentId).count();
       await db.containers.put({
         id: newContainerId, name, icon, color, sortOrder: maxSort,
-        notes, parentId, createdAt: Date.now(), image: cImageData
+        notes, parentId, createdAt: Date.now(), image: cImageData, qrCode
       });
     }
     if (isEdit) {
