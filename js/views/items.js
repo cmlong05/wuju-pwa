@@ -285,7 +285,7 @@ export async function renderItemDetail(container, itemId) {
       h('div', { className: 'detail-row', onclick: () => navigate('item-detail', { itemId: ri.id }), style: 'cursor:pointer' }, [
         h('span', { className: 'value', style: 'flex:1;text-align:left' }, ri.name),
         h('span', { className: 'chevron' }, '›'),
-        h('span', { onclick: (e) => { e.stopPropagation(); db.relations.delete(relation.id).then(() => render()); }, style: 'color:var(--red);cursor:pointer;font-size:16px;margin-left:4px' }, '✕')
+        h('span', { onclick: (e) => { e.stopPropagation(); showDeleteDialog('关联', ri.name, () => { db.relations.delete(relation.id).then(() => render()); }); }, style: 'color:var(--red);cursor:pointer;font-size:16px;margin-left:4px' }, '✕')
       ])
     );
     relRows.push(h('div', { className: 'detail-row', style: 'justify-content:center;gap:16px' }, [
@@ -601,43 +601,69 @@ export async function renderItemEdit(container, itemId, presetContainerId, prese
   actionBtn.appendChild(saveIcon2);
 }
 
-// 简化版添加关联弹窗——直接列出所有物品，点选即可建立双向链接，无需类型和说明。
+// 添加关联弹窗——支持分类筛选和搜索，适合物品较多时快速定位。
 async function showAddRelationPicker(itemId, onDone) {
   const related = await getItemRelations(itemId);
   const relatedIds = new Set(related.map(r => r.item.id));
   relatedIds.add(itemId);
   const allItems = await db.items.toArray();
-  const available = allItems.filter(i => !relatedIds.has(i.id));
+  const cats = getCategoriesList();
 
   const overlay = h('div', { className: 'overlay', style: 'z-index:999' });
   overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
 
-  const dialog = h('div', { className: 'dialog', style: 'max-height:70vh;display:flex;flex-direction:column' });
-  dialog.appendChild(h('div', { className: 'msg', style: 'text-align:center' }, [
-    h('div', { style: 'font-weight:600;margin-bottom:4px' }, '添加关联物品'),
-    h('div', { style: 'font-size:12px;color:var(--text-secondary)' }, '点击物品建立关联')
+  const dialog = h('div', { className: 'dialog', style: 'max-height:75vh;display:flex;flex-direction:column' });
+  dialog.appendChild(h('div', { className: 'msg', style: 'text-align:center;padding-bottom:8px' }, [
+    h('div', { style: 'font-weight:600;margin-bottom:6px' }, '添加关联物品')
   ]));
 
-  const list = h('div', { style: 'overflow-y:auto;max-height:50vh;margin:8px 0' });
-  if (available.length === 0) {
-    list.appendChild(h('div', { style: 'text-align:center;padding:12px;color:var(--text-secondary);font-size:14px' }, '没有可关联的物品'));
-  } else {
-    available.forEach(i => {
-      const row = h('div', {
-        className: 'detail-row',
-        style: 'cursor:pointer',
-        onclick: async () => {
-          await db.relations.put({ id: uuid(), sourceId: itemId, targetId: i.id, createdAt: Date.now() });
-          overlay.remove();
-          onDone?.();
-        }
-      }, [
-        h('span', { style: 'flex:1;text-align:left' }, i.name),
-        h('span', { style: 'color:var(--text-tertiary);font-size:12px' }, i.category || '')
-      ]);
-      list.appendChild(row);
+  // 搜索框 + 分类下拉
+  const filterBar = h('div', { style: 'display:flex;gap:8px;margin-bottom:4px' });
+  const searchInput = h('input', { type: 'text', placeholder: '搜索物品名...', style: 'flex:1;padding:8px 10px;border:1px solid var(--separator);border-radius:6px;font-size:14px' });
+  const catSelect = h('select', { style: 'width:40%;padding:8px 6px;border:1px solid var(--separator);border-radius:6px;font-size:14px' });
+  catSelect.appendChild(h('option', { value: '' }, '全部分类'));
+  cats.forEach(c => catSelect.appendChild(h('option', { value: c.name }, (c.icon || '') + ' ' + c.name)));
+  filterBar.appendChild(searchInput);
+  filterBar.appendChild(catSelect);
+  dialog.appendChild(filterBar);
+
+  const list = h('div', { style: 'overflow-y:auto;max-height:50vh;margin:4px 0' });
+
+  function renderList() {
+    const kw = searchInput.value.toLowerCase();
+    const cat = catSelect.value;
+    const filtered = allItems.filter(i => {
+      if (relatedIds.has(i.id)) return false;
+      if (kw && !i.name.toLowerCase().includes(kw)) return false;
+      if (cat && i.category !== cat) return false;
+      return true;
     });
+    list.innerHTML = '';
+    if (filtered.length === 0) {
+      list.appendChild(h('div', { style: 'text-align:center;padding:16px;color:var(--text-secondary);font-size:14px' }, '没有匹配的物品'));
+    } else {
+      filtered.forEach(i => {
+        const row = h('div', {
+          className: 'detail-row',
+          style: 'cursor:pointer',
+          onclick: async () => {
+            await db.relations.put({ id: uuid(), sourceId: itemId, targetId: i.id, createdAt: Date.now() });
+            overlay.remove();
+            onDone?.();
+          }
+        }, [
+          h('span', { style: 'flex:1;text-align:left' }, i.name),
+          h('span', { style: 'color:var(--text-tertiary);font-size:12px' }, i.category || '')
+        ]);
+        list.appendChild(row);
+      });
+    }
   }
+
+  searchInput.addEventListener('input', renderList);
+  catSelect.addEventListener('change', renderList);
+  renderList();
+
   dialog.appendChild(list);
 
   const btns = h('div', { className: 'btns' });
@@ -646,4 +672,5 @@ async function showAddRelationPicker(itemId, onDone) {
 
   overlay.appendChild(dialog);
   document.body.appendChild(overlay);
+  searchInput.focus();
 }
