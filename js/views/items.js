@@ -365,18 +365,13 @@ export async function renderItemDetail(container, itemId) {
     const onEnd = function() {
       if (!active) return;
       active = false;
-      wrapper.style.transition = 'transform 0.25s ease-out, opacity 0.25s ease-out';
+      wrapper.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
+      wrapper.style.transform = 'translateX(0)';
+      wrapper.style.opacity = '1';
       if (dx < -70 && hasNext) {
-        wrapper.style.transform = 'translateX(-110%)';
-        wrapper.style.opacity = '0';
-        setTimeout(function() { navigate('item-detail', { itemId: list[curIdx + 1] }); }, 280);
+        navigate('item-detail', { itemId: list[curIdx + 1] });
       } else if (dx > 70 && hasPrev) {
-        wrapper.style.transform = 'translateX(110%)';
-        wrapper.style.opacity = '0';
-        setTimeout(function() { navigate('item-detail', { itemId: list[curIdx - 1] }); }, 280);
-      } else {
-        wrapper.style.transform = 'translateX(0)';
-        wrapper.style.opacity = '1';
+        navigate('item-detail', { itemId: list[curIdx - 1] });
       }
     };
 
