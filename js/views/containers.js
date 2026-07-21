@@ -548,7 +548,8 @@ export async function renderContainerEdit(container, containerId, presetParentId
     const icon = iconEl ? iconEl.textContent : '📁';
     const color = colorEl ? colorEl.dataset.color : '#5B8FF9';
     const cascadeSelects = [...document.querySelectorAll('#cedit-parent-cascade .cascade-select')];
-    const parentId = cascadeSelects.length > 0 ? cascadeSelects[cascadeSelects.length - 1].value : '';
+    let parentId = '';
+    for (let i = cascadeSelects.length - 1; i >= 0; i--) { if (cascadeSelects[i].value) { parentId = cascadeSelects[i].value; break; } }
     const notes = $('#cedit-notes').value;
     let qrCode = $('#cedit-qrcode').value.trim();
     let newContainerId = null;

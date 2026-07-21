@@ -589,7 +589,7 @@ export async function renderItemEdit(container, itemId, presetContainerId, prese
       category: $('#edit-category').value,
       tags: [...document.querySelectorAll('#edit-tags .chip.selected')].map(b => b.textContent.replace(/^[^\s]*\s/, '')),
       expiryDate: document.getElementById('edit-has-expiry').classList.contains('on') ? new Date($('#edit-expiry').value).getTime() : null,
-      containerId: (function() { const sels = [...document.querySelectorAll('#edit-container-cascade .cascade-select')]; return sels.length > 0 ? sels[sels.length - 1].value : ''; })(),
+      containerId: (function() { const sels = [...document.querySelectorAll('#edit-container-cascade .cascade-select')]; for (let i = sels.length - 1; i >= 0; i--) { if (sels[i].value) return sels[i].value; } return ''; })(),
       notes: $('#edit-notes').value,
       qrCode: $('#edit-qrcode').value.trim() || presetQrCode || undefined
     };
