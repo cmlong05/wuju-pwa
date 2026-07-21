@@ -7,6 +7,7 @@ import { compressImage, getImageMaxWidth } from '../image-utils.js';
 
 // 处理物品列表的搜索、筛选与排序结果，并把最终列表渲染到容器里。
 let _rowGen = 0;
+let _detailSwipeCleanup = null;
 async function renderItemRows() {
   const gen = ++_rowGen;
   const wrap = document.getElementById('item-list-wrap');
@@ -334,6 +335,9 @@ export async function renderItemDetail(container, itemId) {
   const hasNext = curIdx >= 0 && curIdx < list.length - 1;
 
   if (hasPrev || hasNext) {
+    // 清除上一轮渲染残留的触摸监听器
+    if (_detailSwipeCleanup) { _detailSwipeCleanup(); _detailSwipeCleanup = null; }
+
     let sx = 0, sy = 0, dx = 0;
     let active = false, horiz = false, locked = false;
 
@@ -378,6 +382,12 @@ export async function renderItemDetail(container, itemId) {
     container.addEventListener('touchstart', onStart, { passive: true });
     container.addEventListener('touchmove', onMove, { passive: true });
     container.addEventListener('touchend', onEnd);
+
+    _detailSwipeCleanup = function() {
+      container.removeEventListener('touchstart', onStart, { passive: true });
+      container.removeEventListener('touchmove', onMove, { passive: true });
+      container.removeEventListener('touchend', onEnd);
+    };
   }
 }
 
