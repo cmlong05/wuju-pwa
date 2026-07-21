@@ -2,7 +2,7 @@ import { $, h, formatDate, isExpired, isExpiringSoon } from '../core/dom.js';
 import { state, navigate, replaceNavigate, switchTab, goBack, render } from '../core/app-shell.js';
 import { db, getContainerPath, getItemRelations, deleteItemRelations, uuid } from '../db.js';
 import { catIcons, tagIcons, getCategoriesList, getTagsList, showQRModal, showDeleteDialog, sectionBlock, rowItem, rowLink, formGroup, toggleField, emptyView, showTagManager, showCategoryManager } from '../ui.js';
-import { startAssociationScan, startLocationScan } from '../scanner.js';
+import { startAssociationScan, startLocationScan, showScanner, parseWujuCode } from '../scanner.js';
 
 // 处理物品列表的搜索、筛选与排序结果，并把最终列表渲染到容器里。
 let _rowGen = 0;
@@ -392,29 +392,151 @@ export async function renderItemEdit(container, itemId, presetContainerId, prese
   const expiryInput = h('input', { type: 'date', id: 'edit-expiry', value: item?.expiryDate ? formatDate(item.expiryDate) : formatDate(Date.now()) });
   form.appendChild(formGroup('', h('div', { id: 'edit-expiry-row', style: hasExpiry ? '' : 'display:none' }, [expiryInput])));
 
-  const allContainers = await db.containers.orderBy('name').toArray();
-  const defaultContainerId = item ? item.containerId : (presetContainerId || '');
-  const contSelect = h('select', { id: 'edit-container' });
-  contSelect.appendChild(h('option', { value: '', selected: !defaultContainerId ? 'selected' : undefined }, '未归类'));
-  // 批量构建 path map，避免逐个 getContainerPath 的 N*D 次 DB 查询
+  // 逐级联动：存放位置选择
+  const allContainers = await db.containers.toArray();
   const contMap = {};
   allContainers.forEach(c => { contMap[c.id] = c; });
-  function buildNamePath(c) {
-    const parts = [c.name];
-    let pid = c.parentId;
+  const roots = allContainers.filter(c => c.parentId === '').sort((a, b) => a.sortOrder - b.sortOrder);
+
+  function getChildren(pid) {
+    return allContainers.filter(c => c.parentId === pid).sort((a, b) => a.sortOrder - b.sortOrder);
+  }
+
+  // 计算祖先路径（编辑已有物品或新建时预设容器）
+  const defaultContainerId = item ? item.containerId : (presetContainerId || '');
+  const ancestorPath = [];
+  if (defaultContainerId && contMap[defaultContainerId]) {
+    let pid = contMap[defaultContainerId].parentId;
     while (pid && contMap[pid]) {
-      parts.unshift(contMap[pid].name);
+      ancestorPath.unshift(contMap[pid]);
       pid = contMap[pid].parentId;
     }
-    return parts.join(' > ');
   }
-  for (const c of allContainers) {
-    contSelect.appendChild(h('option', {
-      value: c.id,
-      selected: defaultContainerId === c.id ? 'selected' : undefined
-    }, buildNamePath(c)));
+
+  const cascadeDiv = h('div', { id: 'edit-container-cascade', style: 'display:flex;flex-direction:column;gap:6px' });
+  const selStyle = 'width:100%;padding:12px;border:1px solid var(--separator);border-radius:8px;font-size:15px;background:var(--card-bg);color:var(--text)';
+
+  function makeSelect(level, options, selectedValue) {
+    const sel = h('select', { className: 'cascade-select', 'data-level': String(level), style: selStyle });
+    if (level === 0) {
+      sel.appendChild(h('option', { value: '' }, '未归类'));
+    } else {
+      sel.appendChild(h('option', { value: '' }, '—'));
+    }
+    options.forEach(o => {
+      sel.appendChild(h('option', { value: o.id, selected: o.id === selectedValue ? 'selected' : undefined }, o.icon + ' ' + o.name));
+    });
+    return sel;
   }
-  form.appendChild(formGroup('存放位置', contSelect));
+
+  function rebuildFromLevel(startLevel, startParentId) {
+    var selects = [...cascadeDiv.querySelectorAll('.cascade-select')];
+    selects.forEach(function(s) {
+      if (parseInt(s.dataset.level) >= startLevel) s.remove();
+    });
+    if (startLevel === -1) {
+      cascadeDiv.innerHTML = '';
+      var s0 = makeSelect(0, roots, ancestorPath.length > 0 ? ancestorPath[0].id : '');
+      cascadeDiv.appendChild(s0);
+      bindChange(s0);
+      if (s0.value) cascadeFrom(s0);
+      return;
+    }
+    var parentId = startParentId;
+    var level = startLevel;
+    while (parentId) {
+      var children = getChildren(parentId);
+      if (children.length === 0) break;
+      var sel = makeSelect(level, children, '');
+      cascadeDiv.appendChild(sel);
+      bindChange(sel);
+      parentId = sel.value;
+      level++;
+      if (!parentId) break;
+    }
+  }
+
+  function bindChange(sel) {
+    sel.addEventListener('change', function() {
+      var lvl = parseInt(this.dataset.level);
+      if (this.value) {
+        rebuildFromLevel(lvl + 1, this.value);
+      } else {
+        rebuildFromLevel(lvl + 1, '');
+      }
+    });
+  }
+
+  function cascadeFrom(sel) {
+    var lvl = parseInt(sel.dataset.level);
+    var children = getChildren(sel.value);
+    if (children.length > 0) {
+      rebuildFromLevel(lvl + 1, sel.value);
+    }
+  }
+
+  // 首次渲染：预填祖先路径
+  if (ancestorPath.length > 0) {
+    var pid2 = '';
+    for (var ai = 0; ai < ancestorPath.length; ai++) {
+      var options = ai === 0 ? roots : getChildren(pid2);
+      var sel = makeSelect(ai, options, ancestorPath[ai].id);
+      cascadeDiv.appendChild(sel);
+      bindChange(sel);
+      pid2 = ancestorPath[ai].id;
+    }
+    if (defaultContainerId && contMap[defaultContainerId]) {
+      var lastChildren = getChildren(pid2);
+      if (lastChildren.length > 0) {
+        var lastSel = makeSelect(ancestorPath.length, lastChildren, defaultContainerId);
+        cascadeDiv.appendChild(lastSel);
+        bindChange(lastSel);
+      }
+    }
+  } else {
+    var s0 = makeSelect(0, roots, '');
+    cascadeDiv.appendChild(s0);
+    bindChange(s0);
+  }
+
+  form.appendChild(formGroup('存放位置', h('div', { style: 'display:flex;align-items:flex-start;gap:4px' }, [
+    cascadeDiv,
+    h('button', { type: 'button', style: 'padding:6px 2px;border:none;background:transparent;font-size:18px;cursor:pointer;color:var(--text-secondary);flex-shrink:0;margin-top:6px', onclick: async function() {
+      showScanner(async function(text) {
+        var foundId = '';
+        const wuju = parseWujuCode(text);
+        if (wuju && wuju.type === 'container') {
+          foundId = wuju.id;
+        } else {
+          const found = await db.containers.where('qrCode').equals(text).first();
+          if (found) foundId = found.id;
+        }
+        if (!foundId || !contMap[foundId]) {
+          alert('未识别到位置条码/二维码');
+          return;
+        }
+        var path = [];
+        var pid3 = contMap[foundId]?.parentId;
+        while (pid3 && contMap[pid3]) {
+          path.unshift(contMap[pid3]);
+          pid3 = contMap[pid3].parentId;
+        }
+        cascadeDiv.innerHTML = '';
+        var cp = '';
+        for (var pi = 0; pi < path.length; pi++) {
+          var opts = pi === 0 ? roots : getChildren(cp);
+          var s = makeSelect(pi, opts, path[pi].id);
+          cascadeDiv.appendChild(s);
+          bindChange(s);
+          cp = path[pi].id;
+        }
+        var finalOpts = path.length === 0 ? roots : getChildren(cp);
+        var fs = makeSelect(path.length, finalOpts, foundId);
+        cascadeDiv.appendChild(fs);
+        bindChange(fs);
+      }, 'container');
+    } }, '📷')
+  ])));
 
   form.appendChild(formGroup('备注', h('textarea', { id: 'edit-notes' }, item?.notes || '')));
 
@@ -434,7 +556,7 @@ export async function renderItemEdit(container, itemId, presetContainerId, prese
       category: $('#edit-category').value,
       tags: [...document.querySelectorAll('#edit-tags .chip.selected')].map(b => b.textContent.replace(/^[^\s]*\s/, '')),
       expiryDate: document.getElementById('edit-has-expiry').classList.contains('on') ? new Date($('#edit-expiry').value).getTime() : null,
-      containerId: $('#edit-container').value,
+      containerId: (function() { const sels = [...document.querySelectorAll('#edit-container-cascade .cascade-select')]; return sels.length > 0 ? sels[sels.length - 1].value : ''; })(),
       notes: $('#edit-notes').value
     };
 
