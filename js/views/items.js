@@ -288,13 +288,17 @@ export async function renderItemDetail(container, itemId) {
         h('span', { className: 'chevron' }, '›')
       ])
     );
-    relRows.push(h('div', { className: 'detail-row', onclick: () => navigate('relation-edit', { itemId }), style: 'cursor:pointer;justify-content:center;color:var(--tint)' }, '🔗 管理关联'));
-    relRows.push(h('div', { className: 'detail-row', onclick: () => startAssociationScan(itemId, () => navigate('item-detail', { itemId })), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, '📷 扫描关联'));
+    relRows.push(h('div', { className: 'detail-row', style: 'justify-content:center;gap:16px' }, [
+      h('span', { onclick: () => navigate('relation-edit', { itemId }), style: 'cursor:pointer;color:var(--tint)' }, '🔗 管理关联'),
+      h('span', { onclick: () => startAssociationScan(itemId, () => navigate('item-detail', { itemId })), style: 'cursor:pointer;color:var(--green)' }, '📷 扫描关联')
+    ]));
     wrapper.appendChild(sectionBlock('关联物品', relRows));
   } else {
     wrapper.appendChild(sectionBlock('关联物品', [
-      h('div', { className: 'detail-row', onclick: () => navigate('relation-edit', { itemId }), style: 'cursor:pointer;justify-content:center;color:var(--tint)' }, '🔗 添加关联'),
-      h('div', { className: 'detail-row', onclick: () => startAssociationScan(itemId, () => navigate('item-detail', { itemId })), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, '📷 扫描关联')
+      h('div', { className: 'detail-row', style: 'justify-content:center;gap:16px' }, [
+        h('span', { onclick: () => navigate('relation-edit', { itemId }), style: 'cursor:pointer;color:var(--tint)' }, '🔗 添加关联'),
+        h('span', { onclick: () => startAssociationScan(itemId, () => navigate('item-detail', { itemId })), style: 'cursor:pointer;color:var(--green)' }, '📷 扫描关联')
+      ])
     ]));
   }
 
