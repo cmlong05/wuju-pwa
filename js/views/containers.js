@@ -140,19 +140,12 @@ export async function renderContainerDetail(container, containerId) {
   wrapper.appendChild(sectionBlock('子位置', childRows));
 
   const items = await db.items.where('containerId').equals(containerId).toArray();
-  function addItemRow() {
-    return h('div', { className: 'detail-row', onclick: () => navigate('item-edit', { presetContainerId: containerId }), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, [
-      (function() {
-        var icon = h('span', { style: 'display:inline-flex;align-items:center;margin-right:4px' });
-        icon.innerHTML = '<svg width="1.2rem" height="1.2rem" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path d="M512 1024C229.7 1024 0 794.3 0 512S229.7 0 512 0s512 229.7 512 512-229.7 512-512 512z m0-938.7C276.7 85.3 85.3 276.7 85.3 512S276.7 938.7 512 938.7 938.7 747.3 938.7 512 747.3 85.3 512 85.3z" fill="#3688FF"/><path d="M682.7 554.7H341.3c-23.6 0-42.7-19.1-42.7-42.7s19.1-42.7 42.7-42.7h341.3c23.6 0 42.7 19.1 42.7 42.7s-19.1 42.7-42.6 42.7z" fill="#5F6379"/><path d="M512 725.3c-23.6 0-42.7-19.1-42.7-42.7V341.3c0-23.6 19.1-42.7 42.7-42.7s42.7 19.1 42.7 42.7v341.3c0 23.6-19.1 42.7-42.7 42.7z" fill="#5F6379"/></svg>';
-        return icon;
-      })(),
-      ' 添加物品'
-    ]);
-  }
+  const itemRows = [];
+
+  // 物品列表
   if (items.length > 0) {
-    const itemRows = items.map(item =>
-      h('div', { className: 'detail-row', onclick: () => navigate('item-detail', { itemId: item.id }), style: 'cursor:pointer;flex-wrap:wrap;gap:4px' }, [
+    items.forEach(item => {
+      itemRows.push(h('div', { className: 'detail-row', onclick: () => navigate('item-detail', { itemId: item.id }), style: 'cursor:pointer;flex-wrap:wrap;gap:4px' }, [
         h('span', { style: 'margin-right:8px' }, '📦'),
         h('span', { style: 'flex:1;font-weight:500' }, item.name),
         (item.tags && item.tags.length > 0)
@@ -160,18 +153,39 @@ export async function renderContainerDetail(container, containerId) {
           : '',
         item.quantity != null ? h('span', { style: 'color:var(--text-secondary);font-size:13px' }, '×' + item.quantity) : '',
         h('span', { className: 'chevron' }, '›')
-      ])
-    );
-    itemRows.push(addItemRow());
-    itemRows.push(h('div', { className: 'detail-row', onclick: () => startContainerItemScan(containerId, () => navigate('container-detail', { containerId })), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, '📷 扫描关联物品'));
-    wrapper.appendChild(sectionBlock('物品 (' + items.length + ')', itemRows));
+      ]));
+    });
   } else {
-    wrapper.appendChild(sectionBlock('物品 (0)', [
-      h('div', { className: 'detail-row', style: 'color:var(--text-secondary)' }, '此位置中没有物品'),
-      addItemRow(),
-      h('div', { className: 'detail-row', onclick: () => startContainerItemScan(containerId, () => navigate('container-detail', { containerId })), style: 'cursor:pointer;justify-content:center;color:var(--green)' }, '📷 扫描关联物品')
-    ]));
+    itemRows.push(h('div', { className: 'detail-row', style: 'color:var(--text-secondary)' }, '此位置中没有物品'));
   }
+
+  // 添加物品：手动 / 扫描
+  const plusIcon = h('span', { style: 'display:inline-flex;align-items:center;margin-right:3px' });
+  plusIcon.innerHTML = '<svg width="1.1rem" height="1.1rem" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path d="M512 1024C229.7 1024 0 794.3 0 512S229.7 0 512 0s512 229.7 512 512-229.7 512-512 512z m0-938.7C276.7 85.3 85.3 276.7 85.3 512S276.7 938.7 512 938.7 938.7 747.3 938.7 512 747.3 85.3 512 85.3z" fill="#3688FF"/><path d="M682.7 554.7H341.3c-23.6 0-42.7-19.1-42.7-42.7s19.1-42.7 42.7-42.7h341.3c23.6 0 42.7 19.1 42.7 42.7s-19.1 42.7-42.6 42.7z" fill="#5F6379"/><path d="M512 725.3c-23.6 0-42.7-19.1-42.7-42.7V341.3c0-23.6 19.1-42.7 42.7-42.7s42.7 19.1 42.7 42.7v341.3c0 23.6-19.1 42.7-42.7 42.7z" fill="#5F6379"/></svg>';
+  itemRows.push(
+    h('div', { className: 'detail-row', style: 'justify-content:center;gap:12px;padding:6px 0' }, [
+      h('button', { type: 'button', style: 'display:inline-flex;align-items:center;gap:2px;border:none;background:transparent;color:var(--green);font-size:14px;cursor:pointer;padding:4px 10px',
+        onclick: () => navigate('item-edit', { presetContainerId: containerId })
+      }, [plusIcon.cloneNode(true), '手动添加']),
+      h('button', { type: 'button', style: 'display:inline-flex;align-items:center;gap:2px;border:none;background:transparent;color:var(--green);font-size:14px;cursor:pointer;padding:4px 10px',
+        onclick: () => showScanner(function(text) { navigate('item-edit', { presetContainerId: containerId, presetQrCode: text }); })
+      }, ['📷', '扫描添加'])
+    ])
+  );
+
+  // 关联已有物品：手动 / 扫描
+  itemRows.push(
+    h('div', { className: 'detail-row', style: 'justify-content:center;gap:12px;padding:6px 0' }, [
+      h('button', { type: 'button', style: 'display:inline-flex;align-items:center;gap:2px;border:none;background:transparent;color:var(--green);font-size:14px;cursor:pointer;padding:4px 10px',
+        onclick: () => showAssociateItemPicker(containerId, () => navigate('container-detail', { containerId }))
+      }, ['📋', '手动关联']),
+      h('button', { type: 'button', style: 'display:inline-flex;align-items:center;gap:2px;border:none;background:transparent;color:var(--green);font-size:14px;cursor:pointer;padding:4px 10px',
+        onclick: () => startContainerItemScan(containerId, () => navigate('container-detail', { containerId }))
+      }, ['📷', '扫描关联'])
+    ])
+  );
+
+  wrapper.appendChild(sectionBlock('物品 (' + items.length + ')', itemRows));
 
   container.appendChild(wrapper);
 
@@ -196,6 +210,79 @@ export async function renderContainerDetail(container, containerId) {
 }
 
 // 渲染容器编辑页，支持图标、颜色、父容器和备注。
+// 关联已有物品弹窗：支持搜索和分类筛选，选中的物品归入当前容器。
+async function showAssociateItemPicker(containerId, onDone) {
+  const allItems = await db.items.toArray();
+  const containerItemIds = new Set(allItems.filter(i => i.containerId === containerId).map(i => i.id));
+
+  const { getCategoriesList } = await import('../ui.js');
+
+  const overlay = h('div', { className: 'overlay', style: 'z-index:999' });
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+
+  const dialog = h('div', { className: 'dialog', style: 'max-height:75vh;display:flex;flex-direction:column' });
+  dialog.appendChild(h('div', { className: 'msg', style: 'text-align:center;padding-bottom:8px' }, [
+    h('div', { style: 'font-weight:600;margin-bottom:6px' }, '关联已有物品到此位置')
+  ]));
+
+  const catsList = getCategoriesList();
+  const filterBar = h('div', { style: 'display:flex;gap:8px;margin-bottom:4px' });
+  const searchInput = h('input', { type: 'text', placeholder: '搜索物品名...', style: 'flex:1;padding:8px 10px;border:1px solid var(--separator);border-radius:6px;font-size:14px' });
+  const catSelect = h('select', { style: 'width:40%;padding:8px 6px;border:1px solid var(--separator);border-radius:6px;font-size:14px' });
+  catSelect.appendChild(h('option', { value: '' }, '全部分类'));
+  catsList.forEach(c => catSelect.appendChild(h('option', { value: c.name }, (c.icon || '') + ' ' + c.name)));
+  filterBar.appendChild(searchInput);
+  filterBar.appendChild(catSelect);
+  dialog.appendChild(filterBar);
+
+  const list = h('div', { style: 'overflow-y:auto;max-height:50vh;margin:4px 0' });
+
+  function renderList() {
+    const kw = searchInput.value.toLowerCase();
+    const cat = catSelect.value;
+    const filtered = allItems.filter(i => {
+      if (containerItemIds.has(i.id)) return false;
+      if (kw && !i.name.toLowerCase().includes(kw)) return false;
+      if (cat && i.category !== cat) return false;
+      return true;
+    });
+    list.innerHTML = '';
+    if (filtered.length === 0) {
+      list.appendChild(h('div', { style: 'text-align:center;padding:16px;color:var(--text-secondary);font-size:14px' }, '没有可关联的物品'));
+    } else {
+      filtered.forEach(i => {
+        const row = h('div', {
+          className: 'detail-row',
+          style: 'cursor:pointer',
+          onclick: async () => {
+            await db.items.update(i.id, { containerId: containerId });
+            overlay.remove();
+            onDone?.();
+          }
+        }, [
+          h('span', { style: 'flex:1;text-align:left' }, i.name),
+          h('span', { style: 'color:var(--text-tertiary);font-size:12px' }, i.category || '')
+        ]);
+        list.appendChild(row);
+      });
+    }
+  }
+
+  searchInput.addEventListener('input', renderList);
+  catSelect.addEventListener('change', renderList);
+  renderList();
+
+  dialog.appendChild(list);
+
+  const btns = h('div', { className: 'btns' });
+  btns.appendChild(h('button', { onclick: () => overlay.remove() }, '取消'));
+  dialog.appendChild(btns);
+
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  searchInput.focus();
+}
+
 export async function renderContainerEdit(container, containerId, presetParentId, presetQrCode) {
   const c = containerId ? await db.containers.get(containerId) : null;
   const isEdit = !!c;
