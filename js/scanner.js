@@ -91,6 +91,11 @@ export async function showScanner(onScan, mode) {
     h('div', { 
       style: 'color:#fff;padding:16px 16px 4px;text-align:center;font-size:17px;font-weight:600;flex-shrink:0' 
     }, title),
+    // 右上角关闭按钮
+    h('div', {
+      style: 'position:absolute;top:12px;right:12px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;cursor:pointer;z-index:10',
+      onclick: function() { stopScanner(); overlay.remove(); }
+    }, '❌'),
     
     // 2. 状态提示区域：默认隐藏，用于显示扫描状态信息
     h('div', { id: 'qr-status', style: 'flex-shrink:0;display:none' }),
@@ -118,19 +123,13 @@ export async function showScanner(onScan, mode) {
       })
     ]),
     
-    // 5. 操作按钮区域：手电筒开关 + 关闭按钮
+    // 5. 手电筒按钮
     h('div', { style: 'margin:8px 16px 16px;flex-shrink:0;display:flex;gap:12px' }, [
-      // 手电筒按钮：调用 _toggleTorch() 切换补光灯状态
       h('button', {
         id: 'torch-btn',
         style: 'flex:1;padding:12px 24px;border-radius:8px;border:none;background:rgba(255,255,255,.2);color:#fff;font-size:15px;cursor:pointer',
         onclick: _toggleTorch
-      }, '💡'),
-      // 关闭按钮：停止扫描并移除浮层
-      h('button', {
-        style: 'flex:1;padding:12px 24px;border-radius:8px;border:none;background:rgba(255,255,255,.2);color:#fff;font-size:15px;cursor:pointer',
-        onclick: function() { stopScanner(); overlay.remove(); }
-      }, '关闭')
+      }, '💡')
     ])
   ]);
   document.body.appendChild(overlay);
